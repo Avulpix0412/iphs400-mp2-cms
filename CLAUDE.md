@@ -36,3 +36,13 @@ admin console never goes on the public internet.
   starts `T0N:` and ends `Closes #N`.
 - Ask before adding a dependency. The stack in `pyproject.toml` is fixed for this
   project.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as GitHub Issues in this repo (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
