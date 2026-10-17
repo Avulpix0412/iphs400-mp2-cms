@@ -48,6 +48,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
         "manage_all_guides",   # see and edit everyone's Guides, any Hero
         "edit_guide_slugs",
         "manage_game",         # Heroes and Patches
+        "build_site",          # 更新网站: the Site build and deploy
     }),
     "editor": frozenset(),
 }

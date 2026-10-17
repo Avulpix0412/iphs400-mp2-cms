@@ -1,0 +1,14 @@
+{# The list of Guides shown on the home, Hero and Author pages. #}
+{% macro guide_list(guides) %}
+  {% if not guides %}<p>{{ t.no_guides }}</p>{% else %}
+  <ul class="guides">
+    {% for guide in guides %}
+    <li>
+      <a href="{{ link("guides/" ~ guide.slug ~ "/") }}">{{ guide|localized("title", lang) }}</a>
+      <small>{{ guide|localized("hero_name", lang) }} · {{ guide.patch_name }}
+        · {{ guide.author_name }} · {{ guide.updated_at[:10] }}</small>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endmacro %}

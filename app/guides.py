@@ -17,7 +17,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 
-from app import game
+from app import db, game
 from app.accounts import User
 
 
@@ -54,6 +54,7 @@ class Guide:
     hero_id: int
     hero_name_zh: str
     hero_name_en: str
+    hero_slug: str
     patch_id: int
     patch_name: str
     author_id: int
@@ -66,6 +67,10 @@ class Guide:
     @property
     def status_label(self) -> str:
         return STATUS_LABELS[self.status]
+
+    def has_text_in(self, lang: str) -> bool:
+        """Chinese text is required, so every Guide has it; English is optional."""
+        return lang == "zh" or bool(self.title_en.strip() or self.body_en.strip())
 
 
 @dataclass(frozen=True)
@@ -89,7 +94,7 @@ class GuideFields:
 
 _SELECT = """
 SELECT guides.*, heroes.name_zh AS hero_name_zh, heroes.name_en AS hero_name_en,
-       patches.name AS patch_name, users.display_name AS author_name
+       heroes.slug AS hero_slug, patches.name AS patch_name, users.display_name AS author_name
 FROM guides
 JOIN game_terms AS heroes ON heroes.id = guides.hero_id
 JOIN patches ON patches.id = guides.patch_id
@@ -150,6 +155,14 @@ def guides(conn: sqlite3.Connection, actor: User,
     rows = conn.execute(f"{_SELECT} WHERE {' AND '.join(clauses)}"
                         " ORDER BY guides.updated_at DESC, guides.id DESC",
                         values).fetchall()
+    return [_guide_from_row(row) for row in rows]
+
+
+def published(conn: sqlite3.Connection) -> list[Guide]:
+    """Every Published Guide, most recently updated first: all the Site build
+    may read. It acts for no one, so it needs no user."""
+    rows = conn.execute(f"{_SELECT} WHERE guides.status = 'published'"
+                        " ORDER BY guides.updated_at DESC, guides.id DESC").fetchall()
     return [_guide_from_row(row) for row in rows]
 
 
@@ -245,7 +258,7 @@ def save(conn: sqlite3.Connection, actor: User, guide_id: int,
         _check_text(fields)
     conn.execute(
         "UPDATE guides SET title_zh = ?, body_zh = ?, title_en = ?, body_en = ?,"
-        " hero_id = ?, patch_id = ?, slug = ?, updated_at = CURRENT_TIMESTAMP"
+        f" hero_id = ?, patch_id = ?, slug = ?, updated_at = {db.NOW}"
         " WHERE id = ?",
         (fields.title_zh.strip(), fields.body_zh, fields.title_en.strip(),
          fields.body_en, hero.id, patch_id, slug, guide_id))
@@ -280,7 +293,7 @@ def submit(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
                          "如有疑问，请联系管理员。")
     _check_text(current)
     conn.execute("UPDATE guides SET status = 'submitted',"
-                 " updated_at = CURRENT_TIMESTAMP WHERE id = ?", (guide_id,))
+                 f" updated_at = {db.NOW} WHERE id = ?", (guide_id,))
     return _editable(conn, actor, guide_id)
 
 
@@ -303,7 +316,7 @@ def publish(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
         raise Refused("这篇攻略还是草稿，要等作者提交审核后才能发布。")
     _check_text(current)
     conn.execute("UPDATE guides SET status = 'published',"
-                 " published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP"
+                 f" published_at = {db.NOW}, updated_at = {db.NOW}"
                  " WHERE id = ?", (guide_id,))
     return _editable(conn, actor, guide_id)
 

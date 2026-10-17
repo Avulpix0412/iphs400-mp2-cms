@@ -1,6 +1,6 @@
 .env
 *.db
-site/
+/site/
 __pycache__/
 .pytest_cache/
 .venv/
