@@ -139,8 +139,9 @@ A Guide its writer has marked finished, waiting for an Admin to review it.
 _Avoid_: pending, draft, ready
 
 **Return** (退回):
-An Admin's decision that a Submitted Guide is not ready. It goes back to its
-writer as a Draft, with the Admin's notes.
+An Admin's decision that a Submitted Guide or Revision is not ready. It goes
+back to its writer as a Draft, with the Admin's notes. A Returned Revision
+leaves the Published Guide as it is.
 _Avoid_: reject, decline
 
 **Review note** (审核意见):

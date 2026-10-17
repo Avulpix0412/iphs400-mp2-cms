@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import settings, web
-from app.routes import auth, dashboard, game, guides, site
+from app.routes import auth, dashboard, game, guides, site, trash
 from app.web import templates
 
 
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(game.router)
     app.include_router(guides.router)
     app.include_router(site.router)
+    app.include_router(trash.router)
     return app
 
 

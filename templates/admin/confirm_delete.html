@@ -1,0 +1,11 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>{{ question }}</p>
+  {% for line in consequences %}<p>{{ line }}</p>{% endfor %}
+  <form method="post" action="{{ console_root(request) }}{{ action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">{{ button }}</button>
+    <a href="{{ console_root(request) }}{{ cancel }}">取消</a>
+  </form>
+{% endblock %}

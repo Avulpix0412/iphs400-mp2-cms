@@ -4,7 +4,7 @@
 <section class="review-notes" aria-labelledby="review-notes-heading">
   <h2 id="review-notes-heading">审核意见</h2>
   {% if guide.status != "published" %}
-  <p>在<a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/preview">预览</a>里，各轮审核意见引用的段落只要还在正文中，都会高亮显示。</p>
+  <p>在<a href="{{ console_root(request) }}{{ guide.console_path }}/preview">预览</a>里，各轮审核意见引用的段落只要还在正文中，都会高亮显示。</p>
   {% endif %}
   {% for round in review_rounds %}
   <h3>{{ round.admin_name }} {{ round.label }}于 {{ round.created_at[:16] }}{% if loop.first and guide.status == "draft" %}（本轮）{% endif %}</h3>
