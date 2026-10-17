@@ -1,24 +1,29 @@
 """The FastAPI application.
 
-T00 (already done): the admin console answers at /admin and the public site
-answers at /. That is the whole skeleton — it exists so you can prove the stack
-runs before you build anything on it.
-
-Add your routes in their own modules (app/routes/posts.py and so on) and include
-them here. Keep this file small.
+T00: the admin console answers at /admin and the public site answers at /.
+Ticket routes live in their own modules under app/routes/ and are included
+here. Keep this file small.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
+from fastapi import Depends, FastAPI, Request
+from starlette.middleware.sessions import SessionMiddleware
 
-from app import settings
-
-templates = Jinja2Templates(directory=str(settings.TEMPLATES))
+from app import settings, web
+from app.routes import auth, dashboard, game
+from app.web import templates
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="IPHS 400 MP2 CMS")
+    app = FastAPI(title="IPHS 400 MP2 CMS",
+                  dependencies=[Depends(web.verify_csrf)])
+    app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY,
+                       session_cookie=web.SESSION_COOKIE,
+                       max_age=web.SESSION_MAX_AGE, same_site="lax")
+    app.add_exception_handler(web.LoginRequired, web.login_required_handler)
+    app.add_exception_handler(web.SetupRequired, web.setup_required_handler)
+    app.add_exception_handler(web.AdminRequired, web.admin_required_handler)
+    app.add_exception_handler(web.CsrfRejected, web.csrf_rejected_handler)
 
     @app.get("/admin")
     def admin_home(request: Request):
@@ -33,9 +38,9 @@ def create_app() -> FastAPI:
             {"title": settings.SITE_TITLE, "items": []},
         )
 
-    # Your ticket work plugs in here, e.g.
-    #   from app.routes import posts
-    #   app.include_router(posts.router)
+    app.include_router(auth.router)
+    app.include_router(dashboard.router)
+    app.include_router(game.router)
     return app
 
 

@@ -13,9 +13,16 @@ Do not fork: a fork arrives without an Issues tab, and your tickets live in Issu
 
 ```bash
 uv sync
-cp .env.example .env
-uv run cms serve        # then open http://localhost:8000/admin  -> "T00: hello admin"
+cp .env.example .env    # then change the passwords and the secret key
+uv run --env-file .env python scripts/seed_demo.py   # demo accounts, Heroes, Patches
+uv run --env-file .env cms serve   # then open http://localhost:8000/login
 ```
+
+The seeded accounts are `admin@example.test` (Admin, 演示管理员) and
+`editor@example.test` (Editor, 演示编辑), with the passwords you set in `.env` as
+`CMS_ADMIN_PASSWORD` and `CMS_EDITOR_PASSWORD`. The seed script refuses to run
+without them; there are no default passwords. It also adds a few demo Heroes
+and the Patches 6.5–6.7, with 6.7 as the Current Patch (管理后台 → 英雄 / 版本).
 
 ## What is here
 
