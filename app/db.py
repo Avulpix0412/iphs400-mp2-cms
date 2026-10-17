@@ -11,7 +11,11 @@ from contextlib import contextmanager
 
 from app import settings
 
-SCHEMA = """
+# The time now, to the millisecond, for timestamps compared with the last Site
+# build: a Guide Published in the same second as a Site build still counts.
+NOW = "strftime('%Y-%m-%d %H:%M:%f', 'now')"
+
+SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -62,9 +66,15 @@ CREATE TABLE IF NOT EXISTS guides (
     author_id    INTEGER NOT NULL REFERENCES users (id),
     status       TEXT NOT NULL DEFAULT 'draft'
                  CHECK (status IN ('draft', 'submitted', 'published')),
-    created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at   TEXT NOT NULL DEFAULT ({NOW}),
+    updated_at   TEXT NOT NULL DEFAULT ({NOW}),
     published_at TEXT
+);
+
+-- One row per successful Site build, at the time it started reading content.
+CREATE TABLE IF NOT EXISTS site_builds (
+    id         INTEGER PRIMARY KEY,
+    started_at TEXT NOT NULL
 );
 """
 

@@ -7,13 +7,16 @@ in as a seeded user of that role, so access-control tests stay one line:
         assert client_as("editor").get("/admin/users").status_code in (302, 403)
 
 Every test gets its own empty SQLite database (through `CMS_DATABASE`) holding
-only the DEMO_USERS below.
+only the DEMO_USERS below. The Site build writes into a temporary folder, and
+its deploy step is replaced, so no test ever pushes to gh-pages.
 """
 from __future__ import annotations
 
 import re
 
 import pytest
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -40,6 +43,18 @@ def database(tmp_path, monkeypatch):
                                  password=user["password"], role=role,
                                  display_name=user["display_name"])
     return tmp_path / "cms.db"
+
+
+@pytest.fixture(autouse=True)
+def deploys(tmp_path, monkeypatch) -> list[Path]:
+    """The folders the Site build deployed, in order. A test can replace
+    `app.publish.deploy` again to make the push fail."""
+    from app import publish, settings
+
+    monkeypatch.setattr(settings, "SITE", tmp_path / "site")
+    pushed: list[Path] = []
+    monkeypatch.setattr(publish, "deploy", lambda out, *_: pushed.append(out))
+    return pushed
 
 
 def add_user(**fields) -> None:

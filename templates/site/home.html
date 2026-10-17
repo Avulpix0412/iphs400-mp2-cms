@@ -1,0 +1,14 @@
+{% extends "site/base.html" %}
+{% from "site/_guides.html" import guide_list with context %}
+{% block title %}{{ t.site_name }}{% endblock %}
+{% block content %}
+  <h1>{{ t.site_name }}</h1>
+  <h2>{{ t.newest_guides }}</h2>
+  {{ guide_list(guides) }}
+  <h2>{{ t.heroes }}</h2>
+  <ul class="heroes">
+    {% for hero in heroes %}
+    <li><a href="{{ link("heroes/" ~ hero.slug ~ "/") }}">{{ hero|localized("name", lang) }}</a></li>
+    {% endfor %}
+  </ul>
+{% endblock %}

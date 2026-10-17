@@ -1,0 +1,16 @@
+{% extends "site/base.html" %}
+{% from "site/_guides.html" import guide_list with context %}
+{% block title %}{{ hero|localized("name", lang) }} · {{ t.site_name }}{% endblock %}
+{% block content %}
+  {% if lang == "en" %}
+  <p class="fallback-notice" id="no-english-text">The guide you came from has no
+    English text yet. Here are the English guides for {{ hero.name_en }}.</p>
+  {% endif %}
+  <h1>{{ hero|localized("name", lang) }}</h1>
+  {% for patch_name, guides in patches %}
+    <h2>{{ patch_name }}</h2>
+    {{ guide_list(guides) }}
+  {% else %}
+    {{ guide_list([]) }}
+  {% endfor %}
+{% endblock %}

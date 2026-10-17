@@ -10,4 +10,13 @@
     {% endfor %}
   </ul>
   <p><a href="/admin/guides/new">写攻略</a></p>
+
+  {% if user.can("build_site") %}
+  <h2>公开网站</h2>
+  <p>{% if not_on_site %}{{ not_on_site }} 项更改尚未更新到网站{% else %}网站已是最新{% endif %}</p>
+  <form method="post" action="/admin/site-build">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">更新网站</button>
+  </form>
+  {% endif %}
 {% endblock %}

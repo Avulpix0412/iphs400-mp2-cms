@@ -7,11 +7,8 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
-import sys
 
-from app import settings
-from app.publish import render_site
+from app import publish, settings
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "publish":
-        out = render_site()
+        out = publish.render_site()
         print(f"Wrote {out}. Preview it with:  python3 -m http.server -d {out} 8001")
         return 0
 
@@ -40,14 +37,14 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.SITE.exists():
             print("site/ does not exist yet — run `uv run cms publish` first.")
             return 1
-        result = subprocess.run(
-            [sys.executable, "-m", "ghp_import", "-n", "-p", "-m", args.message,
-             str(settings.SITE)],
-        )
-        if result.returncode == 0:
-            print("Pushed to gh-pages. Settings -> Pages -> Deploy from a branch -> "
-                  "gh-pages / root, then wait up to 10 minutes.")
-        return result.returncode
+        try:
+            publish.deploy(settings.SITE, args.message)
+        except publish.DeployFailed as failed:
+            print(f"Deploy failed: {failed.message}")
+            return 1
+        print("Pushed to gh-pages. Settings -> Pages -> Deploy from a branch -> "
+              "gh-pages / root, then wait up to 10 minutes.")
+        return 0
     return 1
 
 

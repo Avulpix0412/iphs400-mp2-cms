@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="{{ "zh-CN" if lang == "zh" else "en" }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ site_link("style.css") }}">
+</head>
+<body>
+  <header>
+    <a class="brand" href="{{ link("") }}">{{ t.site_name }}</a>
+    {% if current_patch %}<span>{{ t.current_patch }}{{ current_patch }}</span>{% endif %}
+    <a class="language-switch" href="{{ switch_link }}" hreflang="{{ other }}">{{ t.other_language }}</a>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>
