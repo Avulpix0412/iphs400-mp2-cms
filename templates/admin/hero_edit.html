@@ -2,7 +2,7 @@
 {% block content %}
   <h1>编辑英雄：{{ hero.name_zh }}（{{ hero.name_en }}）</h1>
   <p>网址名在添加英雄时生成，之后修改名称也不会改变。当前网址名：<code>{{ hero.slug }}</code></p>
-  <form method="post" action="/admin/heroes/{{ hero.id }}">
+  <form method="post" action="{{ console_root(request) }}admin/heroes/{{ hero.id }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label>官方中文名
       <input type="text" name="name_zh" value="{{ name_zh }}" required>
@@ -11,6 +11,6 @@
       <input type="text" name="name_en" value="{{ name_en }}" required>
     </label>
     <button type="submit">保存</button>
-    <a href="/admin/heroes">取消</a>
+    <a href="{{ console_root(request) }}admin/heroes">取消</a>
   </form>
 {% endblock %}

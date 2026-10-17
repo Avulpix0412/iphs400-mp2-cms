@@ -5,10 +5,10 @@
   <p>状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
     · 网址名：<code>{{ guide.slug }}</code>
     · 更新于 {{ guide.updated_at }}</p>
-  <p><a href="/admin/guides/{{ guide.id }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）</p>
+  <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）</p>
   {% endif %}
 
-  <form method="post" action="{{ '/admin/guides/%d' % guide.id if guide else '/admin/guides' }}">
+  <form method="post" action="{{ console_root(request) }}{{ 'admin/guides/%d' % guide.id if guide else 'admin/guides' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label>英雄
       <select name="hero_id" required>
@@ -52,10 +52,10 @@
 
     <button type="submit">{{ "保存" if guide and guide.status != "draft" else "保存草稿" }}</button>
     {% if can_submit %}
-    <button type="submit" formaction="/admin/guides/{{ guide.id }}/submit">提交审核</button>
+    <button type="submit" formaction="{{ console_root(request) }}admin/guides/{{ guide.id }}/submit">提交审核</button>
     {% endif %}
     {% if can_publish %}
-    <button type="submit" formaction="/admin/guides/{{ guide.id }}/publish">发布</button>
+    <button type="submit" formaction="{{ console_root(request) }}admin/guides/{{ guide.id }}/publish">发布</button>
     {% endif %}
   </form>
 {% endblock %}

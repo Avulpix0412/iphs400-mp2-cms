@@ -7,7 +7,7 @@
     <tbody>
     {% for hero in heroes %}
       <tr><td>{{ hero.name_zh }}</td><td>{{ hero.name_en }}</td><td><code>{{ hero.slug }}</code></td>
-        <td><a href="/admin/heroes/{{ hero.id }}/edit">编辑</a></td></tr>
+        <td><a href="{{ console_root(request) }}admin/heroes/{{ hero.id }}/edit">编辑</a></td></tr>
     {% else %}
       <tr><td colspan="4">还没有英雄。</td></tr>
     {% endfor %}
@@ -15,7 +15,7 @@
   </table>
 
   <h2>添加英雄</h2>
-  <form method="post" action="/admin/heroes">
+  <form method="post" action="{{ console_root(request) }}admin/heroes">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label>官方中文名
       <input type="text" name="name_zh" value="{{ name_zh }}" required>

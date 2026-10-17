@@ -436,7 +436,7 @@ UNSAFE_BODY = """## 终局阵容
 
 def test_preview_renders_markdown_and_strips_unsafe_html(editor):
     edit_page = new_guide(editor, body_zh=UNSAFE_BODY)
-    assert f'href="{edit_page.removesuffix("/edit")}/preview"' in editor.get(edit_page).text
+    assert f'href="../../..{edit_page.removesuffix("/edit")}/preview"' in editor.get(edit_page).text
 
     preview = editor.get(f"{edit_page.removesuffix('/edit')}/preview")
     assert preview.status_code == 200
@@ -520,7 +520,7 @@ def test_an_editors_filtered_list_still_holds_only_their_own_guides(
 def dashboard_counts(c: TestClient) -> dict[str, int]:
     page = c.get("/admin/dashboard").text
     return {label: int(n) for label, n in
-            re.findall(r'<a href="/admin/guides\?status=\w+">(\S+?)：(\d+)</a>', page)}
+            re.findall(r'<a href="\.\./admin/guides\?status=\w+">(\S+?)：(\d+)</a>', page)}
 
 
 def test_the_dashboard_counts_guides_by_status_an_editor_their_own(

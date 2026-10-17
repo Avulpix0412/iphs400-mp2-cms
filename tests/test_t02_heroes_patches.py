@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urljoin
 
 import pytest
 from fastapi.testclient import TestClient
@@ -92,9 +93,9 @@ def edit_link(c: TestClient, listed_en: str) -> str:
     """The edit page linked from the Hero list row showing `listed_en`."""
     row = next(r for r in c.get("/admin/heroes").text.split("<tr>")
                if f"<td>{listed_en}</td>" in r)
-    match = re.search(r'href="(/admin/heroes/\d+/edit)"', row)
+    match = re.search(r'href="([./]*admin/heroes/\d+/edit)"', row)
     assert match, f"no edit link for {listed_en}"
-    return match.group(1)
+    return urljoin("/admin/heroes", match.group(1))
 
 
 def edit_hero(c: TestClient, listed_en: str, **fields):
@@ -198,7 +199,7 @@ def test_a_patch_that_already_exists_or_is_blank_is_refused(client_as, name,
 
 def test_admin_console_navigation_links_to_heroes_and_patches(client_as):
     page = client_as("admin").get("/admin/dashboard").text
-    assert 'href="/admin/heroes"' in page and 'href="/admin/patches"' in page
+    assert 'href="../admin/heroes"' in page and 'href="../admin/patches"' in page
 
 
 @pytest.mark.parametrize("method, path, fields", [
@@ -218,7 +219,7 @@ def test_an_editor_is_refused_on_every_hero_and_patch_route(client_as, method,
 
     editor = client_as("editor")
     dashboard = editor.get("/admin/dashboard").text
-    assert 'href="/admin/heroes"' not in dashboard
+    assert 'admin/heroes"' not in dashboard
     # A real token, so the refusal is about the role and not about CSRF.
     data = {"csrf_token": csrf_token(dashboard), **fields}
     response = editor.request(method, path, data=data if method == "POST" else None,
