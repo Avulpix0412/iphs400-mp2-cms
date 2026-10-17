@@ -2,7 +2,7 @@
 {% block content %}
   <h1>首次登录设置</h1>
   <p>请设置你自己的密码，并选择一个昵称。昵称会公开显示在你的攻略上，登录邮箱不会公开。</p>
-  <form method="post" action="/admin/setup">
+  <form method="post" action="{{ console_root(request) }}admin/setup">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label>昵称（例如你的 B 站昵称）
       <input type="text" name="display_name" value="{{ display_name }}" required maxlength="30" autofocus>

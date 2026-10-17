@@ -14,7 +14,7 @@
   </table>
 
   <h2>添加版本</h2>
-  <form method="post" action="/admin/patches">
+  <form method="post" action="{{ console_root(request) }}admin/patches">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label>版本号（例如 6.7）
       <input type="text" name="name" value="{{ name }}" required>

@@ -62,8 +62,20 @@ def pop_flashes(request: Request) -> list[list[str]]:
     return request.session.pop("flash", [])
 
 
+def console_root(request: Request) -> str:
+    """The relative path from this page back to the console root ("" at
+    /login, "../" at /admin/guides, "../../../" at /admin/guides/5/edit).
+    Templates put it in front of every console link, so no link is
+    root-absolute and none depends on which route rendered the page. A
+    mount prefix (root_path) is part of the console root, so it is not
+    climbed out of."""
+    path = request.url.path.removeprefix(request.scope.get("root_path", ""))
+    return "../" * (path.count("/") - 1)
+
+
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["pop_flashes"] = pop_flashes
+templates.env.globals["console_root"] = console_root
 
 
 def start_session(request: Request, session_id: str) -> None:

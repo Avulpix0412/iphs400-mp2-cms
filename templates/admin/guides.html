@@ -1,9 +1,9 @@
 {% extends "admin/base.html" %}
 {% block content %}
   <h1>攻略</h1>
-  <p><a href="/admin/guides/new">写攻略</a></p>
+  <p><a href="{{ console_root(request) }}admin/guides/new">写攻略</a></p>
 
-  <form method="get" action="/admin/guides" class="filters">
+  <form method="get" action="{{ console_root(request) }}admin/guides" class="filters">
     <label>状态
       <select name="status">
         <option value="">全部</option>
@@ -47,7 +47,7 @@
       </select>
     </label>
     <button type="submit">筛选</button>
-    {% if filtered %}<a href="/admin/guides">清除筛选</a>{% endif %}
+    {% if filtered %}<a href="{{ console_root(request) }}admin/guides">清除筛选</a>{% endif %}
   </form>
 
   <table>
@@ -55,7 +55,7 @@
     <tbody>
     {% for guide in guides %}
       <tr>
-        <td><a href="/admin/guides/{{ guide.id }}/edit">{{ guide.title_zh or "（无标题）" }}</a></td>
+        <td><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">{{ guide.title_zh or "（无标题）" }}</a></td>
         <td>{{ guide.hero_name_zh }}</td>
         <td>{{ guide.patch_name }}</td>
         <td>{{ guide.author_name }}</td>

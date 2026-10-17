@@ -183,7 +183,7 @@ def test_setup_page_keeps_the_console_navigation_and_a_way_to_log_out(client):
     new_editor_needing_setup()
     login(client, "new@example.test", "temporary-pw")
     page = client.get("/admin/setup").text
-    assert "<nav" in page and 'action="/logout"' in page
+    assert "<nav" in page and 'action="../logout"' in page
 
 
 def test_display_names_are_unique_regardless_of_letter_case(client):
