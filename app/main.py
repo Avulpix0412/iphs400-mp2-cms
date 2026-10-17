@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import settings, web
-from app.routes import auth, dashboard
+from app.routes import auth, dashboard, game
 from app.web import templates
 
 
@@ -22,6 +22,7 @@ def create_app() -> FastAPI:
                        max_age=web.SESSION_MAX_AGE, same_site="lax")
     app.add_exception_handler(web.LoginRequired, web.login_required_handler)
     app.add_exception_handler(web.SetupRequired, web.setup_required_handler)
+    app.add_exception_handler(web.AdminRequired, web.admin_required_handler)
     app.add_exception_handler(web.CsrfRejected, web.csrf_rejected_handler)
 
     @app.get("/admin")
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(dashboard.router)
+    app.include_router(game.router)
     return app
 
 

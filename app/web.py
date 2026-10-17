@@ -101,6 +101,19 @@ def signed_in_user(request: Request) -> accounts.User:
     return user
 
 
+class AdminRequired(Exception):
+    """Raised when an Editor reaches an Admin-only page; answered with 403."""
+
+
+def admin_user(request: Request) -> accounts.User:
+    """Dependency for Admin-only pages: the signed-in Admin. Editors are
+    refused, whether they followed a link or typed the URL."""
+    user = signed_in_user(request)
+    if user.role != "admin":
+        raise AdminRequired
+    return user
+
+
 def home_for(user: accounts.User) -> str:
     """Where a signed-in user belongs: setup first, then the dashboard."""
     return "/admin/setup" if user.needs_setup else "/admin/dashboard"
@@ -112,6 +125,10 @@ def redirect(url: str) -> RedirectResponse:
 
 async def login_required_handler(request: Request, exc: Exception) -> RedirectResponse:
     return redirect("/login")
+
+
+async def admin_required_handler(request: Request, exc: Exception) -> PlainTextResponse:
+    return PlainTextResponse("只有管理员可以使用此页面。", status_code=403)
 
 
 async def setup_required_handler(request: Request, exc: Exception) -> RedirectResponse:

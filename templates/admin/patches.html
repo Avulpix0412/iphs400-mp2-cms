@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>版本</h1>
+  <p>游戏更新后，在这里添加新版本。最新添加的版本就是当前版本，会显示在公开网站的页眉中。</p>
+  <table>
+    <thead><tr><th>版本号</th></tr></thead>
+    <tbody>
+    {% for patch in patches %}
+      <tr><td>{{ patch.name }}{% if patch.is_current %}（当前版本）{% endif %}</td></tr>
+    {% else %}
+      <tr><td>还没有版本。</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>添加版本</h2>
+  <form method="post" action="/admin/patches">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>版本号（例如 6.7）
+      <input type="text" name="name" value="{{ name }}" required>
+    </label>
+    <button type="submit">添加并设为当前版本</button>
+  </form>
+{% endblock %}

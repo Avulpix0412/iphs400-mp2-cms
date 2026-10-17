@@ -3,20 +3,22 @@
 
     uv run --env-file .env python scripts/seed_demo.py
 
-Creates one Admin and one Editor. Their passwords come from CMS_ADMIN_PASSWORD
-and CMS_EDITOR_PASSWORD; there are no default passwords, so the script refuses
-to run without both. Running it again leaves existing accounts alone.
+Creates one Admin and one Editor, a few Heroes, and a few Patches (the last
+one, 6.7, becomes the Current Patch). The passwords come from
+CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD; there are no default passwords, so
+the script refuses to run without both. Running it again leaves existing
+accounts, Heroes and Patches alone.
 
 The rubric expects this to run clean on a fresh clone with .env.example values
 (item E4), because the database itself is never committed. Later tickets add
-demo Heroes, Patches, Game Terms, Guides, a Page and Tournament items.
+other Game Terms, Guides, a Page and Tournament items.
 """
 from __future__ import annotations
 
 import os
 import sys
 
-from app import accounts, db, settings
+from app import accounts, db, game, settings
 
 # Matches DEMO_USERS in tests/conftest.py (which uses its own fixed passwords).
 DEMO_USERS = [
@@ -24,6 +26,16 @@ DEMO_USERS = [
     ("admin", "admin@example.test", "演示管理员", "CMS_ADMIN_PASSWORD"),
     ("editor", "editor@example.test", "演示编辑", "CMS_EDITOR_PASSWORD"),
 ]
+
+# Official Chinese name, official English name.
+DEMO_HEROES = [
+    ("瓦妮莎", "Vanessa"),
+    ("皮格马利翁", "Pygmalien"),
+    ("杜利", "Dooley"),
+    ("马克", "Mak"),
+]
+# Oldest first, so the last one added is the Current Patch.
+DEMO_PATCHES = ["6.5", "6.6", "6.7"]
 
 
 def main() -> int:
@@ -47,6 +59,20 @@ def main() -> int:
                 print(f"{role}: {email} already exists, left unchanged.")
                 continue
             print(f"{role}: created {email} (password from {var}).")
+        for name_zh, name_en in DEMO_HEROES:
+            try:
+                game.add_hero(conn, name_zh=name_zh, name_en=name_en)
+            except game.Refused as refused:
+                print(f"hero: {name_en} left unchanged ({refused.message})")
+                continue
+            print(f"hero: created {name_zh} ({name_en}).")
+        for name in DEMO_PATCHES:
+            try:
+                game.add_patch(conn, name)
+            except game.Refused as refused:
+                print(f"patch: {name} left unchanged ({refused.message})")
+                continue
+            print(f"patch: created {name}.")
     print(f"Database: {settings.database_path()}")
     return 0
 

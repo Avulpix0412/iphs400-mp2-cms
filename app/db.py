@@ -29,6 +29,24 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id    INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- A Game Term's slug is set only for Heroes (NULLs never clash in UNIQUE).
+CREATE TABLE IF NOT EXISTS game_terms (
+    id      INTEGER PRIMARY KEY,
+    kind    TEXT NOT NULL CHECK (kind IN ('hero', 'item', 'skill', 'enchantment',
+                                          'monster', 'merchant', 'event')),
+    name_zh TEXT NOT NULL CHECK (name_zh != ''),
+    name_en TEXT NOT NULL CHECK (name_en != ''),
+    slug    TEXT,
+    UNIQUE (kind, slug)
+);
+
+-- The Current Patch is the one added most recently (the highest id).
+CREATE TABLE IF NOT EXISTS patches (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE CHECK (name != ''),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 

@@ -27,6 +27,10 @@
   <nav aria-label="管理后台导航">
     <a class="brand" href="/admin/dashboard">大巴扎攻略站 管理后台</a>
     <a href="/admin/dashboard">控制台</a>
+    {% if user.role == "admin" and not user.needs_setup %}
+    <a href="/admin/heroes">英雄</a>
+    <a href="/admin/patches">版本</a>
+    {% endif %}
     <span>{{ user.display_name or "新账号" }}（{{ "管理员" if user.role == "admin" else "编辑" }}）</span>
     <form method="post" action="/logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">

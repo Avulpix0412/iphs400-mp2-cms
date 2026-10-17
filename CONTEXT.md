@@ -101,6 +101,12 @@ The name the game itself uses for a Game Term in a given language. The site
 only ever shows Official names.
 _Avoid_: nickname (外号), alias, translation
 
+**Slug** (网址名):
+The short web-address name of a Hero, derived from its English Official name
+(`Vanessa` → `vanessa`). No two Heroes share one, and it follows the English
+name when that is corrected.
+_Avoid_: URL name, permalink, handle
+
 **Patch** (版本):
 The game version a Guide was written for, such as `6.7`. Picked by the
 writer. It describes when the Guide was written and is not a verdict on
