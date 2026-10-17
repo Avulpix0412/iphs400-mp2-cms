@@ -72,7 +72,9 @@ def edit_link(c: TestClient, listed_en: str) -> str:
     """The edit page linked from the Hero list row showing `listed_en`."""
     row = next(r for r in c.get("/admin/heroes").text.split("<tr>")
                if f"<td>{listed_en}</td>" in r)
-    return re.search(r'href="(/admin/heroes/\d+/edit)"', row).group(1)
+    match = re.search(r'href="(/admin/heroes/\d+/edit)"', row)
+    assert match, f"no edit link for {listed_en}"
+    return match.group(1)
 
 
 def edit_hero(c: TestClient, listed_en: str, **fields):

@@ -113,7 +113,9 @@ def add_patch(conn: sqlite3.Connection, name: str) -> Patch:
         cur = conn.execute("INSERT INTO patches (name) VALUES (?)", (name,))
     except sqlite3.IntegrityError:
         raise Refused(f"版本 {name} 已存在。") from None
-    return Patch(id=cur.lastrowid, name=name, is_current=True)
+    row = conn.execute("SELECT * FROM patches WHERE id = ?",
+                       (cur.lastrowid,)).fetchone()
+    return Patch(id=row["id"], name=row["name"], is_current=True)
 
 
 def patches(conn: sqlite3.Connection) -> list[Patch]:
