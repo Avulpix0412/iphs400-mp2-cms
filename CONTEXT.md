@@ -114,7 +114,8 @@ whether the Guide is out of date.
 _Avoid_: version (also used for edits to a Guide), season
 
 **Current Patch** (当前版本):
-The newest Patch of the game, as set by an Admin.
+The Patch an Admin added most recently. Adding a Patch always makes it the
+Current Patch, even if its number is lower than an earlier one's.
 _Avoid_: latest version, live patch
 
 **Tournament** (锦标赛):
