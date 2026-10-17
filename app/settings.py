@@ -9,8 +9,12 @@ TEMPLATES = ROOT / "templates"
 SITE = ROOT / "site"
 
 SECRET_KEY = os.environ.get("CMS_SECRET_KEY", "dev-only-not-for-production")
-DATABASE_PATH = Path(os.environ.get("CMS_DATABASE", ROOT / "cms.db"))
 SITE_TITLE = os.environ.get("CMS_SITE_TITLE", "My CMS")
 # Set this to your Pages URL once you deploy, e.g.
 # https://yourname.github.io/iphs400-mp2-cms/
 BASE_PATH = os.environ.get("CMS_BASE_PATH", "")
+
+
+def database_path() -> Path:
+    """Read on every connect, so tests can point CMS_DATABASE at a temp file."""
+    return Path(os.environ.get("CMS_DATABASE", ROOT / "cms.db"))

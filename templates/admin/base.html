@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · 大巴扎攻略站 管理后台</title>
+  <style>
+    :root { color-scheme: light dark; --line: #8884; --ok: #1a7f37; --bad: #cf222e; }
+    body { font: 16px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+           margin: 0; }
+    nav { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+          padding: .75rem 1rem; border-bottom: 1px solid var(--line); }
+    nav .brand { font-weight: 700; margin-inline-end: auto; text-decoration: none; }
+    nav form { margin: 0; }
+    main { max-width: 48rem; margin: 2rem auto; padding: 0 1rem; }
+    .flash { padding: .5rem .75rem; border-radius: 4px; border: 1px solid; }
+    .flash-success { color: var(--ok); }
+    .flash-error { color: var(--bad); }
+    label { display: block; margin-block: .75rem; }
+    input[type=email], input[type=password], input[type=text] {
+      display: block; width: 100%; max-width: 20rem; padding: .4rem; font: inherit; }
+    button { font: inherit; padding: .3rem .9rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  {% if user %}
+  <nav aria-label="管理后台导航">
+    <a class="brand" href="/admin/dashboard">大巴扎攻略站 管理后台</a>
+    <a href="/admin/dashboard">控制台</a>
+    <span>{{ user.display_name or "新账号" }}（{{ "管理员" if user.role == "admin" else "编辑" }}）</span>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <button type="submit">退出登录</button>
+    </form>
+  </nav>
+  {% endif %}
+  <main>
+    {% for kind, message in pop_flashes(request) %}
+      <p class="flash flash-{{ kind }}" role="status">{{ message }}</p>
+    {% endfor %}
+    {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

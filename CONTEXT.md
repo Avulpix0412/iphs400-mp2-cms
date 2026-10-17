@@ -37,6 +37,11 @@ An account state in which the person cannot log in at all. Their Published
 Guides stay on the site.
 _Avoid_: deleted, disabled, banned
 
+**First-login setup** (首次登录设置):
+The step a person with a temporary password must finish before using the
+console: they choose their own password and their Display name.
+_Avoid_: onboarding, activation, registration
+
 **Display name** (昵称):
 The name an Author chooses to be shown under publicly. It is never their
 login username.
