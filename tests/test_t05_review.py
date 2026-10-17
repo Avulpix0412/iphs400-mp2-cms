@@ -273,3 +273,36 @@ def test_a_review_note_sent_as_a_file_is_refused_not_dropped(editor, admin):
                           files={"quote": ("q.txt", b"x")}, follow_redirects=False)
     assert response.status_code == 400
     assert status_of(admin, edit_page) == "已发布"
+
+
+def test_a_quoted_passage_that_crosses_bold_text_is_found_and_highlighted(
+        editor, admin):
+    edit_page = submitted_guide(editor)  # BODY: 别忘了买**锚**。
+    response = review(admin, edit_page, "return", [("别忘了买锚", "锚被削弱了。")])
+    assert response.status_code == 303
+    assert ("<mark>别忘了买</mark><strong><mark>锚</mark></strong>"
+            in preview_of(editor, edit_page))
+
+
+def test_a_quoted_passage_that_crosses_a_link_is_found_and_highlighted(
+        editor, admin):
+    edit_page = submitted_guide(editor, body_zh="先看[这篇攻略](guide.html)再拿船。")
+    response = review(admin, edit_page, "return", [("先看这篇攻略再拿船", "链接失效了。")])
+    assert response.status_code == 303
+    assert re.search(r'<mark>先看</mark><a href="guide.html"[^>]*><mark>这篇攻略</mark>'
+                     r"</a><mark>再拿船</mark>", preview_of(editor, edit_page))
+
+
+def test_quoted_passages_from_every_round_are_highlighted_while_still_in_the_text(
+        editor, admin):
+    edit_page = submitted_guide(editor)
+    review(admin, edit_page, "return", [("先拿船，再拿炮", "第一轮。")])
+    act(editor, edit_page, "submit")
+    review(admin, edit_page, "return", [("别忘了买", "第二轮。")])
+    preview = preview_of(editor, edit_page)
+    assert "<mark>先拿船，再拿炮</mark>" in preview
+    assert "<mark>别忘了买</mark>" in preview
+
+    save(editor, edit_page, body_zh="别忘了买**锚**。")
+    preview = preview_of(editor, edit_page)
+    assert "<mark>先拿船" not in preview and "<mark>别忘了买</mark>" in preview

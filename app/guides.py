@@ -385,12 +385,13 @@ def can_review(actor: User, guide: Guide) -> bool:
 
 def quotes_to_highlight(conn: sqlite3.Connection, actor: User,
                         guide: Guide) -> list[str]:
-    """The passages quoted by the latest Review notes, which the preview
-    highlights until the Guide is Published again."""
-    rounds = review_rounds(conn, actor, guide.id)
-    if not rounds or guide.status == "published":
+    """The passages quoted by the Review notes of every round, which the
+    preview highlights wherever they are still in the text, until the Guide
+    is Published again."""
+    if guide.status == "published":
         return []
-    return [note.quote for note in rounds[0].notes]
+    return list(dict.fromkeys(note.quote for round in review_rounds(conn, actor, guide.id)
+                              for note in round.notes))
 
 
 def _checked_notes(guide: Guide, notes: list[ReviewNote]) -> list[ReviewNote]:
@@ -404,8 +405,8 @@ def _checked_notes(guide: Guide, notes: list[ReviewNote]) -> list[ReviewNote]:
              | highlight(render_markdown(guide.body_en), quotes)[1])
     for quote in quotes:
         if quote not in found:
-            raise Refused(f"在攻略正文中找不到引用的段落“{quote}”。请从上面的正文中"
-                          "复制原文，不要跨越加粗、链接等格式。")
+            raise Refused(f"在攻略正文中找不到引用的段落“{quote}”。"
+                          "请从上面的正文中复制原文。")
     return notes
 
 
