@@ -1,0 +1,68 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">返回编辑</a>
+    · 状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
+    · {{ guide.hero_name_zh }} · {{ guide.patch_name }}</p>
+
+  <article lang="zh-CN">
+    <h2>{{ guide.title_zh or "（无标题）" }}</h2>
+    {{ body_zh | safe }}
+  </article>
+  {% if guide.title_en or guide.body_en %}
+  <hr>
+  <article lang="en">
+    <h2>{{ guide.title_en or "(untitled)" }}</h2>
+    {{ body_en | safe }}
+  </article>
+  {% endif %}
+
+  {% if guide.status == "submitted" %}
+  <hr>
+  <form method="post" action="{{ console_root(request) }}admin/guides/{{ guide.id }}/publish">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <p>可以发布了？<button type="submit">发布</button></p>
+  </form>
+  <p>还不行的话，写下审核意见退回给作者：</p>
+  {% endif %}
+  {% if guide.status in ("submitted", "published") %}
+  <hr>
+  <form method="post" action="{{ console_root(request) }}admin/guides/{{ guide.id }}/{{ 'return' if guide.status == 'submitted' else 'unpublish' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <h2>审核意见{% if guide.status == "published" %}（可选）{% endif %}</h2>
+    <p>每条意见引用攻略正文里的一段原文（从上面复制），再写上修改建议。空着的行会被忽略。</p>
+    <div id="review-notes">
+      {% for note in notes %}
+      <fieldset class="review-note">
+        <label>引用的段落
+          <textarea name="quote" rows="2">{{ note.quote }}</textarea>
+        </label>
+        <label>修改建议
+          <textarea name="advice" rows="3">{{ note.advice }}</textarea>
+        </label>
+      </fieldset>
+      {% endfor %}
+    </div>
+    <p><button type="button" id="add-note" hidden>再加一条意见</button></p>
+    {% if guide.status == "submitted" %}
+    <button type="submit">退回给作者</button>
+    {% else %}
+    <p>撤下后，这篇攻略会作为草稿回到作者手里，下次“更新网站”时从网站上消失。</p>
+    <button type="submit">撤下</button>
+    {% endif %}
+  </form>
+  <script>
+    // Without this script the three rows above are all there is.
+    const add = document.getElementById("add-note");
+    const rows = document.getElementById("review-notes");
+    add.hidden = false;
+    add.addEventListener("click", () => {
+      const row = rows.querySelector(".review-note").cloneNode(true);
+      row.querySelectorAll("textarea").forEach((field) => { field.value = ""; });
+      rows.append(row);
+    });
+  </script>
+  {% else %}
+  <p>只有待审核或已发布的攻略需要审核。</p>
+  {% endif %}
+{% endblock %}

@@ -26,6 +26,14 @@
     .filters label { margin: 0; }
     table { border-collapse: collapse; width: 100%; }
     th, td { text-align: start; padding: .3rem .5rem; border-bottom: 1px solid var(--line); }
+    /* Review note quotes in the preview: the latest round solid, earlier
+       rounds faint and underlined, so they differ without colour too. */
+    mark { background: #ffd43b; color: #000; }
+    mark.earlier { background: #ffd43b40; color: inherit;
+                   text-decoration: underline dotted; text-underline-offset: .2em; }
+    .review-notes .advice { white-space: pre-wrap; }
+    .badge { display: inline-block; padding: 0 .6rem; border-radius: 1rem;
+             color: #fff; background: var(--bad); font-size: .9em; }
     button { font: inherit; padding: .3rem .9rem; cursor: pointer; }
   </style>
 </head>

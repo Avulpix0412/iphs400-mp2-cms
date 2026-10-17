@@ -44,7 +44,8 @@ class AccountDeactivated(Refused):
 # role someone has, so a rule can move between roles without touching callers.
 CAPABILITIES: dict[str, frozenset[str]] = {
     "admin": frozenset({
-        "publish_guides",      # Publish Submitted Guides, and their own Drafts
+        "publish_guides",      # Publish Submitted Guides, and their own Drafts;
+                               # Return and Unpublish Guides
         "manage_all_guides",   # see and edit everyone's Guides, any Hero
         "edit_guide_slugs",
         "manage_game",         # Heroes and Patches
