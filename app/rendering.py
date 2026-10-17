@@ -14,6 +14,7 @@ import re
 from collections.abc import Iterable
 from html import escape
 from html.parser import HTMLParser
+from itertools import groupby
 
 import nh3
 from markdown_it import MarkdownIt
@@ -53,64 +54,60 @@ class _Pieces(HTMLParser):
         self.pieces.append((True, data))
 
 
-def _merged(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    """The spans in order, with any that overlap or touch joined into one."""
-    merged: list[tuple[int, int]] = []
-    for start, end in sorted(spans):
-        if merged and start <= merged[-1][1]:
-            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
-        else:
-            merged.append((start, end))
-    return merged
+# How strongly a character is highlighted: not at all, as part of a quote
+# from an earlier review round, or from the latest one. The strongest wins.
+_PLAIN, _EARLIER, _LATEST = 0, 1, 2
+_MARKS = {_EARLIER: '<mark class="earlier">', _LATEST: "<mark>"}
 
 
-def _marked(text: str, spans: list[tuple[int, int]]) -> str:
-    """`text`, escaped, with each span (offsets into `text`) in <mark>. A
-    span of whitespace only is left unmarked: it may sit between block
-    elements, where <mark> doesn't belong."""
+def _marked(text: str, levels: bytearray) -> str:
+    """`text`, escaped, with each run of highlighted characters (one level
+    per character) in its <mark>. A run of whitespace only is left unmarked:
+    it may sit between block elements, where <mark> doesn't belong."""
     out, done = [], 0
-    for start, end in spans:
-        out.append(escape(text[done:start], quote=False))
-        piece = escape(text[start:end], quote=False)
-        out.append(f"<mark>{piece}</mark>" if piece.strip() else piece)
+    for level, run in groupby(levels):
+        end = done + len(list(run))
+        piece = escape(text[done:end], quote=False)
+        out.append(f"{_MARKS[level]}{piece}</mark>" if level and piece.strip()
+                   else piece)
         done = end
-    out.append(escape(text[done:], quote=False))
     return "".join(out)
 
 
-def highlight(html: str, quotes: Iterable[str]) -> tuple[str, set[str]]:
-    """Mark each of `quotes` where it appears in `html` (the output of
-    render_markdown), and say which ones appear. A quote is matched against
-    the text as Readers see it, ignoring whitespace and formatting, so a
-    passage copied from the preview is found even if it is part bold or runs
-    through a link. Its <mark> is then split at the tags it crosses. Quotes
-    that overlap are marked together."""
+def highlight(html: str, quotes: Iterable[str],
+              earlier: Iterable[str] = ()) -> tuple[str, set[str]]:
+    """Mark each of `quotes` (the latest review round's) and `earlier` (those
+    of rounds before it) where it appears in `html` (the output of
+    render_markdown), and say which ones appear. Earlier quotes get
+    <mark class="earlier">; where the two overlap, the latest round's mark
+    wins. A quote is matched against the text as Readers see it, ignoring
+    whitespace and formatting, so a passage copied from the preview is found
+    even if it is part bold or runs through a link. Its <mark> is then split
+    at the tags it crosses."""
     # Chinese text has no spaces between words, and a line break in the
     # Markdown may fall anywhere, so whitespace may come between any two
     # characters of a quote.
-    patterns = {quote: re.compile(r"\s*".join(map(re.escape, "".join(quote.split()))))
-                for quote in quotes if quote.split()}
+    patterns = [(quote, level,
+                 re.compile(r"\s*".join(map(re.escape, "".join(quote.split())))))
+                for quote_list, level in [(earlier, _EARLIER), (quotes, _LATEST)]
+                for quote in quote_list if quote.split()]
     if not patterns:
         return html, set()
     parser = _Pieces()
     parser.feed(html)
     parser.close()
     text = "".join(piece for is_text, piece in parser.pieces if is_text)
-    found, spans = set(), []
-    for quote, pattern in patterns.items():
-        matches = [match.span() for match in pattern.finditer(text)]
-        if matches:
+    levels, found = bytearray(len(text)), set()
+    for quote, level, pattern in patterns:
+        for match in pattern.finditer(text):
             found.add(quote)
-            spans += matches
-    spans = _merged(spans)
+            for i in range(*match.span()):
+                levels[i] = max(levels[i], level)
     out, offset = [], 0
     for is_text, piece in parser.pieces:
-        if not is_text:
+        if is_text:
+            out.append(_marked(piece, levels[offset:offset + len(piece)]))
+            offset += len(piece)
+        else:
             out.append(piece)
-            continue
-        end = offset + len(piece)
-        inside = [(max(start, offset) - offset, min(stop, end) - offset)
-                  for start, stop in spans if start < end and stop > offset]
-        out.append(_marked(piece, inside))
-        offset = end
     return "".join(out), found

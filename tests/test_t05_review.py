@@ -141,7 +141,7 @@ def test_the_preview_highlights_quoted_passages_still_in_the_text(editor, admin)
     preview = preview_of(editor, edit_page)
     assert "<mark>先拿船，再拿炮</mark>" in preview
     assert "<mark>别忘了买" not in preview
-    assert preview.count("<mark>") == 1
+    assert preview.split("<article", 1)[1].count("<mark") == 1
 
 
 def test_a_quoted_passage_must_be_in_the_guides_text(editor, admin):
@@ -300,9 +300,20 @@ def test_quoted_passages_from_every_round_are_highlighted_while_still_in_the_tex
     act(editor, edit_page, "submit")
     review(admin, edit_page, "return", [("别忘了买", "第二轮。")])
     preview = preview_of(editor, edit_page)
-    assert "<mark>先拿船，再拿炮</mark>" in preview
+    assert '<mark class="earlier">先拿船，再拿炮</mark>' in preview
     assert "<mark>别忘了买</mark>" in preview
 
     save(editor, edit_page, body_zh="别忘了买**锚**。")
     preview = preview_of(editor, edit_page)
     assert "<mark>先拿船" not in preview and "<mark>别忘了买</mark>" in preview
+
+
+def test_the_latest_rounds_highlight_wins_where_it_overlaps_an_earlier_one(
+        editor, admin):
+    edit_page = submitted_guide(editor)
+    review(admin, edit_page, "return", [("先拿船，再拿炮", "第一轮。")])
+    act(editor, edit_page, "submit")
+    review(admin, edit_page, "return", [("再拿炮", "第二轮。")])
+    preview = preview_of(editor, edit_page)
+    assert '<mark class="earlier">先拿船，</mark><mark>再拿炮</mark>' in preview
+    assert "最近一轮" in preview and "更早" in preview  # the key to the two marks

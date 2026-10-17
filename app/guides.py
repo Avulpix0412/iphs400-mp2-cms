@@ -384,14 +384,19 @@ def can_review(actor: User, guide: Guide) -> bool:
 
 
 def quotes_to_highlight(conn: sqlite3.Connection, actor: User,
-                        guide: Guide) -> list[str]:
-    """The passages quoted by the Review notes of every round, which the
-    preview highlights wherever they are still in the text, until the Guide
-    is Published again."""
-    if guide.status == "published":
-        return []
-    return list(dict.fromkeys(note.quote for round in review_rounds(conn, actor, guide.id)
-                              for note in round.notes))
+                        guide: Guide) -> tuple[list[str], list[str]]:
+    """The passages quoted by the latest review round's Review notes, and
+    those quoted only by earlier rounds. The preview highlights both, set
+    apart, wherever they are still in the text, until the Guide is Published
+    again."""
+    rounds = review_rounds(conn, actor, guide.id)
+    if not rounds or guide.status == "published":
+        return [], []
+    latest = list(dict.fromkeys(note.quote for note in rounds[0].notes))
+    earlier = [quote for quote in dict.fromkeys(
+        note.quote for round in rounds[1:] for note in round.notes)
+        if quote not in latest]
+    return latest, earlier
 
 
 def _checked_notes(guide: Guide, notes: list[ReviewNote]) -> list[ReviewNote]:

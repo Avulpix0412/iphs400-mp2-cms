@@ -147,17 +147,19 @@ def edit_guide_form(request: Request,
 @router.get("/admin/guides/{guide_id}/preview")
 def preview_guide(request: Request, user: Annotated[User, Depends(signed_in_user)],
                   guide: Annotated[Guide, Depends(visible_guide)]):
-    """The Guide as Readers will see it, with the passages the latest Review
-    notes quote highlighted (here only: the Site build never highlights)."""
+    """The Guide as Readers will see it, with the passages its Review notes
+    quote highlighted, the latest round's set apart from earlier rounds'
+    (here only: the Site build never highlights)."""
     with db.connect() as conn:
-        quotes = guides.quotes_to_highlight(conn, user, guide)
-    body_zh, found_zh = highlight(render_markdown(guide.body_zh), quotes)
-    body_en, found_en = highlight(render_markdown(guide.body_en), quotes)
+        latest, earlier = guides.quotes_to_highlight(conn, user, guide)
+    body_zh, found_zh = highlight(render_markdown(guide.body_zh), latest, earlier)
+    body_en, found_en = highlight(render_markdown(guide.body_en), latest, earlier)
     return templates.TemplateResponse(
         request, "admin/guide_preview.html",
         {"title": f"预览：{guide.title_zh or '（无标题）'}", "user": user,
          "guide": guide, "body_zh": body_zh, "body_en": body_en,
-         "quotes": quotes, "found": found_zh | found_en})
+         "quotes": latest + earlier, "earlier": earlier,
+         "found": found_zh | found_en})
 
 
 @router.post("/admin/guides/{guide_id}")
