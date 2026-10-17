@@ -94,6 +94,7 @@ _Avoid_: using "event" for Tournaments or site activity
 
 **Hero** (英雄):
 The Game Term for a playable character. Every Guide is about exactly one Hero.
+No two Heroes share an English Official name (ignoring case).
 _Avoid_: character, class
 
 **Official name** (官方名称):
@@ -103,8 +104,8 @@ _Avoid_: nickname (外号), alias, translation
 
 **Slug** (网址名):
 The short web-address name of a Hero or a Guide. A Hero's is derived from its
-English Official name (`Vanessa` → `vanessa`) and follows that name when it is
-corrected. A Guide's is `<hero-slug>-<id>` (`vanessa-12`), given when the Guide
+English Official name (`Vanessa` → `vanessa`) when the Hero is added, and stays
+the same when that name is later corrected. A Guide's is `<hero-slug>-<id>` (`vanessa-12`), given when the Guide
 is created; it never changes on its own (not with the title, the Hero or a
 Revision), only when an Admin edits it, so shared links keep working. No two
 Heroes, and no two Guides, share one.

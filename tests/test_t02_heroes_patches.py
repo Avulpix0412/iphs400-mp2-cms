@@ -56,10 +56,30 @@ def test_a_hero_whose_slug_is_already_taken_is_refused(client_as):
     admin = client_as("admin")
     add_hero(admin, "瓦妮莎", "Vanessa")
 
-    response = add_hero(admin, "另一个瓦妮莎", "vanessa ")
+    response = add_hero(admin, "另一个瓦妮莎", "Vanessa!")
     assert response.status_code == 400
     assert "网址名 vanessa 已被英雄 瓦妮莎（Vanessa）使用" in response.text
     assert "另一个瓦妮莎" not in admin.get("/admin/heroes").text
+
+
+def test_a_new_hero_with_another_heros_english_name_is_refused(client_as):
+    admin = client_as("admin")
+    add_hero(admin, "瓦妮莎", "Vanessa")
+
+    response = add_hero(admin, "另一个瓦妮莎", "vanessa ")
+    assert response.status_code == 400
+    assert "官方英文名 Vanessa 已被英雄 瓦妮莎 使用" in response.text
+    assert "另一个瓦妮莎" not in admin.get("/admin/heroes").text
+
+
+def test_english_names_clash_ignoring_non_ascii_case_too(client_as):
+    admin = client_as("admin")
+    add_hero(admin, "埃克莱尔", "Éclair")
+    add_hero(admin, "杜利", "Dooley")
+
+    clash = edit_hero(admin, "Dooley", name_zh="杜利", name_en="ÉCLAIR")
+    assert clash.status_code == 400
+    assert "官方英文名 Éclair 已被英雄 埃克莱尔 使用" in clash.text
 
 
 def test_an_english_name_with_no_letters_or_digits_is_refused(client_as):
@@ -82,7 +102,7 @@ def edit_hero(c: TestClient, listed_en: str, **fields):
     return submit(c, page, page.removesuffix("/edit"), **fields)
 
 
-def test_admin_edits_a_heros_official_names_and_the_slug_follows(client_as):
+def test_admin_corrects_a_heros_official_names_and_the_slug_stays(client_as):
     admin = client_as("admin")
     add_hero(admin, "瓦妮沙", "Vanesa")
     add_hero(admin, "杜利", "Dooley")
@@ -91,9 +111,9 @@ def test_admin_edits_a_heros_official_names_and_the_slug_follows(client_as):
     assert response.status_code == 303
     assert response.headers["location"] == "/admin/heroes"
     page = admin.get("/admin/heroes").text
-    assert "<td>瓦妮莎</td><td>Vanessa</td><td><code>vanessa</code></td>" in page
+    assert "<td>瓦妮莎</td><td>Vanessa</td><td><code>vanesa</code></td>" in page
     assert "瓦妮沙" not in page and "Vanesa<" not in page
-    assert "<td>杜利</td><td>Dooley</td>" in page
+    assert "<td>杜利</td><td>Dooley</td><td><code>dooley</code></td>" in page
 
 
 def test_editing_only_the_chinese_name_keeps_the_heros_own_slug(client_as):
@@ -104,16 +124,36 @@ def test_editing_only_the_chinese_name_keeps_the_heros_own_slug(client_as):
     assert "<td>瓦妮莎</td>" in admin.get("/admin/heroes").text
 
 
-def test_an_edit_that_blanks_a_name_or_takes_another_heros_slug_is_refused(client_as):
+def test_an_edit_that_blanks_a_name_is_refused(client_as):
+    admin = client_as("admin")
+    add_hero(admin, "杜利", "Dooley")
+
+    blank_zh = edit_hero(admin, "Dooley", name_zh="", name_en="Dooley")
+    assert blank_zh.status_code == 400 and "请填写官方中文名" in blank_zh.text
+    blank_en = edit_hero(admin, "Dooley", name_zh="杜利", name_en=" ")
+    assert blank_en.status_code == 400 and "请填写官方英文名" in blank_en.text
+    assert "<td>杜利</td><td>Dooley</td>" in admin.get("/admin/heroes").text
+
+
+def test_an_edit_that_takes_another_heros_english_name_is_refused(client_as):
     admin = client_as("admin")
     add_hero(admin, "瓦妮莎", "Vanessa")
     add_hero(admin, "杜利", "Dooley")
 
-    blank = edit_hero(admin, "Dooley", name_zh="", name_en="Dooley")
-    assert blank.status_code == 400 and "请填写官方中文名" in blank.text
     clash = edit_hero(admin, "Dooley", name_zh="杜利", name_en="VANESSA")
-    assert clash.status_code == 400 and "网址名 vanessa 已被英雄" in clash.text
+    assert clash.status_code == 400
+    assert "官方英文名 Vanessa 已被英雄 瓦妮莎 使用" in clash.text
     assert "<td>杜利</td><td>Dooley</td>" in admin.get("/admin/heroes").text
+
+
+def test_a_new_hero_cannot_take_a_corrected_heros_english_name(client_as):
+    admin = client_as("admin")
+    add_hero(admin, "瓦妮沙", "Vanesa")
+    edit_hero(admin, "Vanesa", name_zh="瓦妮莎", name_en="Vanessa")
+
+    response = add_hero(admin, "瓦妮莎", "Vanessa")
+    assert response.status_code == 400
+    assert "官方英文名 Vanessa 已被英雄 瓦妮莎 使用" in response.text
 
 
 def test_editing_a_hero_that_does_not_exist_is_not_found(client_as):
