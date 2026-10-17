@@ -1,0 +1,9 @@
+/* Minimal starter styles — make them yours. */
+:root { color-scheme: light dark; }
+body { font: 16px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+       margin: 0 auto; max-width: 42rem; padding: 1rem; }
+header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
+header .brand { font-weight: 700; text-decoration: none; margin-inline-end: auto; }
+main { margin-block: 2rem; }
+.fallback-notice { display: none; }
+.fallback-notice:target { display: block; }
