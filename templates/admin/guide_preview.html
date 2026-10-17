@@ -3,6 +3,9 @@
   <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">返回编辑</a>
     · 状态：{{ guide.status_label }}</p>
   <p>这是读者将会看到的样子（显示已保存的内容）。</p>
+  {% if quotes %}
+  <p>最近一轮审核意见引用的段落已用高亮标出（只在这里显示，读者看不到）。{% for quote in quotes if quote not in found %}{% if loop.first %}已不在正文中的：{% endif %}“{{ quote }}”{% endfor %}</p>
+  {% endif %}
 
   <article lang="zh-CN">
     <h1>{{ guide.title_zh or "（无标题）" }}</h1>

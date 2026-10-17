@@ -3,6 +3,38 @@
   <h1>你好，{{ user.display_name }}</h1>
   <p>欢迎回到大巴扎攻略站管理后台。</p>
 
+  {% if returned %}
+  <h2><span class="badge">被退回或撤下 {{ returned | length }}</span></h2>
+  <p>这些攻略回到了你手里，打开后可以在顶部看到审核意见，改好后再提交审核。</p>
+  <ul>
+    {% for guide in returned %}
+    <li><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">{{ guide.title_zh or "（无标题）" }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if user.can("publish_guides") %}
+  <h2>待审核 <span class="badge">{{ queue | length }}</span></h2>
+  {% if queue %}
+  <table>
+    <thead><tr><th>标题</th><th>作者</th><th>英雄</th><th>版本</th><th>更新于</th></tr></thead>
+    <tbody>
+    {% for guide in queue %}
+      <tr>
+        <td><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/review">{{ guide.title_zh or "（无标题）" }}</a></td>
+        <td>{{ guide.author_name }}</td>
+        <td>{{ guide.hero_name_zh }}</td>
+        <td>{{ guide.patch_name }}</td>
+        <td>{{ guide.updated_at[:16] }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>没有等待审核的攻略。</p>
+  {% endif %}
+  {% endif %}
+
   <h2>{{ "全部攻略" if user.can("manage_all_guides") else "我的攻略" }}</h2>
   <ul>
     {% for status, label in statuses.items() %}

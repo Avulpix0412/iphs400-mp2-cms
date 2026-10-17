@@ -188,7 +188,9 @@ def build_site() -> Path:
 
 
 def changes_not_on_site(conn: sqlite3.Connection) -> int:
-    """How many Published Guides changed since the last successful Site build
-    started (all of them, if there has never been one)."""
-    last = conn.execute("SELECT MAX(started_at) FROM site_builds").fetchone()[0]
-    return sum(guide.updated_at > (last or "") for guide in guides.published(conn))
+    """How many Guides changed since the last successful Site build started
+    (all of them, if there has never been one): Published Guides edited
+    since, and Guides Unpublished since, which the next build leaves out."""
+    last = conn.execute("SELECT MAX(started_at) FROM site_builds").fetchone()[0] or ""
+    changed = {guide.id for guide in guides.published(conn) if guide.updated_at > last}
+    return len(changed | guides.unpublished_since(conn, last))

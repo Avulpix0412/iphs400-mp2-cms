@@ -16,9 +16,12 @@ router = APIRouter()
 def dashboard(request: Request, user: Annotated[User, Depends(signed_in_user)]):
     with db.connect() as conn:
         counts = guides.counts(conn, user)
+        returned = guides.returned_to(conn, user)
+        queue = guides.review_queue(conn, user)
         not_on_site = (publish.changes_not_on_site(conn)
                        if user.can("build_site") else None)
     return templates.TemplateResponse(
         request, "admin/dashboard.html",
         {"title": "控制台", "user": user, "counts": counts,
+         "returned": returned, "queue": queue,
          "statuses": guides.STATUS_LABELS, "not_on_site": not_on_site})

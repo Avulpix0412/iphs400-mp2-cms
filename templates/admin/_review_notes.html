@@ -1,0 +1,22 @@
+{# Every Return and Unpublish of the Guide, newest first. Console only: the
+   Site build never reads Review notes. #}
+{% if review_rounds %}
+<section class="review-notes" aria-labelledby="review-notes-heading">
+  <h2 id="review-notes-heading">审核意见</h2>
+  {% if guide.status != "published" %}
+  <p>在<a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/preview">预览</a>里，最近一轮意见引用的段落如果还在正文中，会高亮显示。</p>
+  {% endif %}
+  {% for round in review_rounds %}
+  <h3>{{ round.admin_name }} {{ round.label }}于 {{ round.created_at[:16] }}{% if loop.first and guide.status == "draft" %}（本轮）{% endif %}</h3>
+  {% if round.notes %}
+  <ol>
+    {% for note in round.notes %}
+    <li><blockquote>{{ note.quote }}</blockquote><p class="advice">{{ note.advice }}</p></li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>没有附审核意见。</p>
+  {% endif %}
+  {% endfor %}
+</section>
+{% endif %}

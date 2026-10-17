@@ -71,6 +71,27 @@ CREATE TABLE IF NOT EXISTS guides (
     published_at TEXT
 );
 
+-- Each Return or Unpublish is a review round, kept for the Guide's history.
+-- A Draft with any round behind it came back to its Author: a Guide only
+-- leaves Submitted or Published for Draft through one.
+CREATE TABLE IF NOT EXISTS review_rounds (
+    id         INTEGER PRIMARY KEY,
+    guide_id   INTEGER NOT NULL REFERENCES guides (id) ON DELETE CASCADE,
+    admin_id   INTEGER NOT NULL REFERENCES users (id),
+    kind       TEXT NOT NULL CHECK (kind IN ('return', 'unpublish')),
+    created_at TEXT NOT NULL DEFAULT ({NOW})
+);
+
+CREATE TABLE IF NOT EXISTS review_notes (
+    id       INTEGER PRIMARY KEY,
+    round_id INTEGER NOT NULL REFERENCES review_rounds (id) ON DELETE CASCADE,
+    quote    TEXT NOT NULL CHECK (quote != ''),
+    advice   TEXT NOT NULL CHECK (advice != '')
+);
+
+CREATE INDEX IF NOT EXISTS review_rounds_by_guide ON review_rounds (guide_id);
+CREATE INDEX IF NOT EXISTS review_notes_by_round ON review_notes (round_id);
+
 -- One row per successful Site build, at the time it started reading content.
 CREATE TABLE IF NOT EXISTS site_builds (
     id         INTEGER PRIMARY KEY,

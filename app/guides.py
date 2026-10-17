@@ -1,8 +1,10 @@
 """The Guide workflow: every change to a Guide, and who may make it.
 
-A Guide moves Draft -> Submitted -> Published. Routes never touch a Guide's
-row themselves: they call a function here with the acting user, and it either
-makes the change or raises `Refused` with the reason to show.
+A Guide moves Draft -> Submitted -> Published. An Admin's Return (from
+Submitted) or Unpublish (from Published) sends it back to its Author as a
+Draft, recorded as a review round with Review notes. Routes never touch a
+Guide's row themselves: they call a function here with the acting user, and it
+either makes the change or raises `Refused` with the reason to show.
 
 A Guide's slug is `<hero-slug>-<id>`, given when it is created. It never
 changes on its own (not with the title, not with the Hero); only an Admin can
@@ -16,9 +18,11 @@ from __future__ import annotations
 import re
 import sqlite3
 from dataclasses import dataclass
+from itertools import groupby
 
 from app import db, game
 from app.accounts import User
+from app.rendering import highlight, render_markdown
 
 
 class Refused(Exception):
@@ -63,6 +67,7 @@ class Guide:
     created_at: str
     updated_at: str
     published_at: str | None
+    returned: bool  # a Draft that a Return or Unpublish sent back to its Author
 
     @property
     def status_label(self) -> str:
@@ -94,7 +99,9 @@ class GuideFields:
 
 _SELECT = """
 SELECT guides.*, heroes.name_zh AS hero_name_zh, heroes.name_en AS hero_name_en,
-       heroes.slug AS hero_slug, patches.name AS patch_name, users.display_name AS author_name
+       heroes.slug AS hero_slug, patches.name AS patch_name, users.display_name AS author_name,
+       (guides.status = 'draft' AND EXISTS (SELECT 1 FROM review_rounds
+         WHERE review_rounds.guide_id = guides.id)) AS returned
 FROM guides
 JOIN game_terms AS heroes ON heroes.id = guides.hero_id
 JOIN patches ON patches.id = guides.patch_id
@@ -103,7 +110,9 @@ JOIN users ON users.id = guides.author_id
 
 
 def _guide_from_row(row: sqlite3.Row) -> Guide:
-    return Guide(**{field: row[field] for field in Guide.__dataclass_fields__})
+    fields = {field: row[field] for field in Guide.__dataclass_fields__}
+    fields["returned"] = bool(fields["returned"])  # SQLite gives 0 or 1
+    return Guide(**fields)
 
 
 def _visible_to(actor: User) -> tuple[str, tuple[int, ...]]:
@@ -319,6 +328,161 @@ def publish(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
                  f" published_at = {db.NOW}, updated_at = {db.NOW}"
                  " WHERE id = ?", (guide_id,))
     return _editable(conn, actor, guide_id)
+
+
+@dataclass(frozen=True)
+class ReviewNote:
+    """A passage quoted from a Guide's text, with an Admin's advice on it."""
+    quote: str
+    advice: str
+
+
+ROUND_LABELS = {"return": "退回", "unpublish": "撤下"}
+
+
+@dataclass(frozen=True)
+class ReviewRound:
+    """One Return or Unpublish, with the Review notes the Admin gave."""
+    kind: str
+    admin_name: str
+    created_at: str
+    notes: tuple[ReviewNote, ...]
+
+    @property
+    def label(self) -> str:
+        return ROUND_LABELS[self.kind]
+
+
+def review_rounds(conn: sqlite3.Connection, actor: User,
+                  guide_id: int) -> list[ReviewRound]:
+    """Every Return and Unpublish of a Guide `actor` may see, newest first."""
+    _editable(conn, actor, guide_id)
+    rows = conn.execute(
+        "SELECT review_rounds.id, kind, review_rounds.created_at,"
+        " users.display_name AS admin_name, quote, advice FROM review_rounds"
+        " JOIN users ON users.id = review_rounds.admin_id"
+        " LEFT JOIN review_notes ON review_notes.round_id = review_rounds.id"
+        " WHERE guide_id = ? ORDER BY review_rounds.id DESC, review_notes.id",
+        (guide_id,)).fetchall()
+    rounds = []
+    for _, group in groupby(rows, key=lambda row: row["id"]):
+        group = list(group)
+        # A round with no notes (an Unpublish may have none) has one row,
+        # whose note columns are NULL.
+        notes = tuple(ReviewNote(row["quote"], row["advice"])
+                      for row in group if row["quote"] is not None)
+        rounds.append(ReviewRound(kind=group[0]["kind"],
+                                  admin_name=group[0]["admin_name"],
+                                  created_at=group[0]["created_at"], notes=notes))
+    return rounds
+
+
+def can_review(actor: User, guide: Guide) -> bool:
+    """Whether to offer `actor` the review screen for `guide`: Admins Return
+    (or Publish) a Submitted Guide and Unpublish a Published one."""
+    return actor.can("publish_guides") and guide.status in ("submitted", "published")
+
+
+def quotes_to_highlight(conn: sqlite3.Connection, actor: User,
+                        guide: Guide) -> list[str]:
+    """The passages quoted by the latest Review notes, which the preview
+    highlights until the Guide is Published again."""
+    rounds = review_rounds(conn, actor, guide.id)
+    if not rounds or guide.status == "published":
+        return []
+    return [note.quote for note in rounds[0].notes]
+
+
+def _checked_notes(guide: Guide, notes: list[ReviewNote]) -> list[ReviewNote]:
+    """The notes, trimmed. Each quotes a passage of the Guide's text as the
+    preview shows it, so the Author will see it highlighted there."""
+    notes = [ReviewNote(note.quote.strip(), note.advice.strip()) for note in notes]
+    if any(not note.quote or not note.advice for note in notes):
+        raise Refused("每条审核意见都要有引用的段落和修改建议。")
+    quotes = [note.quote for note in notes]
+    found = (highlight(render_markdown(guide.body_zh), quotes)[1]
+             | highlight(render_markdown(guide.body_en), quotes)[1])
+    for quote in quotes:
+        if quote not in found:
+            raise Refused(f"在攻略正文中找不到引用的段落“{quote}”。请从上面的正文中"
+                          "复制原文，不要跨越加粗、链接等格式。")
+    return notes
+
+
+def _send_back(conn: sqlite3.Connection, actor: User, current: Guide, kind: str,
+               notes: list[ReviewNote]) -> Guide:
+    """Turn the Guide back into a Draft for its Author, recording the round.
+    The status it was read in is checked again as it changes, so if another
+    Admin got there first this is refused rather than undoing their step."""
+    changed = conn.execute(
+        f"UPDATE guides SET status = 'draft', updated_at = {db.NOW}"
+        " WHERE id = ? AND status = ?", (current.id, current.status)).rowcount
+    if not changed:
+        raise Refused("这篇攻略刚被别人改过，请刷新页面后再试。")
+    cur = conn.execute("INSERT INTO review_rounds (guide_id, admin_id, kind)"
+                       " VALUES (?, ?, ?)", (current.id, actor.id, kind))
+    conn.executemany("INSERT INTO review_notes (round_id, quote, advice)"
+                     " VALUES (?, ?, ?)",
+                     [(cur.lastrowid, note.quote, note.advice) for note in notes])
+    return _editable(conn, actor, current.id)
+
+
+def return_guide(conn: sqlite3.Connection, actor: User, guide_id: int,
+                 notes: list[ReviewNote]) -> Guide:
+    """An Admin sends a Submitted Guide back to its Author as a Draft, with at
+    least one Review note saying what to fix."""
+    current = _editable(conn, actor, guide_id)
+    if not actor.can("publish_guides"):
+        raise NotAllowed("只有管理员可以退回攻略。")
+    if current.status != "submitted":
+        raise Refused("只能退回待审核的攻略。")
+    notes = _checked_notes(current, notes)
+    if not notes:
+        raise Refused("退回时请至少写一条审核意见。")
+    return _send_back(conn, actor, current, "return", notes)
+
+
+def unpublish(conn: sqlite3.Connection, actor: User, guide_id: int,
+              notes: list[ReviewNote]) -> Guide:
+    """An Admin takes a Published Guide off the site at the next Site build.
+    It goes back to its Author as a Draft, with Review notes if any."""
+    current = _editable(conn, actor, guide_id)
+    if not actor.can("publish_guides"):
+        raise NotAllowed("只有管理员可以撤下攻略。")
+    if current.status != "published":
+        raise Refused("只能撤下已发布的攻略。")
+    return _send_back(conn, actor, current, "unpublish",
+                      _checked_notes(current, notes))
+
+
+def unpublished_since(conn: sqlite3.Connection, since: str) -> set[int]:
+    """The ids of Guides Unpublished after `since` and not Published again:
+    the Site build reads Published Guides only, so they drop out of it."""
+    rows = conn.execute(
+        "SELECT DISTINCT guide_id FROM review_rounds JOIN guides"
+        " ON guides.id = review_rounds.guide_id WHERE kind = 'unpublish'"
+        " AND review_rounds.created_at > ? AND guides.status != 'published'",
+        (since,)).fetchall()
+    return {row["guide_id"] for row in rows}
+
+
+def review_queue(conn: sqlite3.Connection, actor: User) -> list[Guide]:
+    """Every Submitted Guide waiting for an Admin, longest waiting first
+    (as far as the last change shows); nothing for anyone who can't review."""
+    if not actor.can("publish_guides"):
+        return []
+    rows = conn.execute(f"{_SELECT} WHERE guides.status = 'submitted'"
+                        " ORDER BY guides.updated_at, guides.id").fetchall()
+    return [_guide_from_row(row) for row in rows]
+
+
+def returned_to(conn: sqlite3.Connection, actor: User) -> list[Guide]:
+    """`actor`'s own Guides that a Return or Unpublish sent back to them and
+    that they have not Submitted again, most recently sent back first."""
+    rows = conn.execute(f"{_SELECT} WHERE guides.author_id = ? AND returned"
+                        " ORDER BY guides.updated_at DESC, guides.id DESC",
+                        (actor.id,)).fetchall()
+    return [_guide_from_row(row) for row in rows]
 
 
 def counts(conn: sqlite3.Connection, actor: User) -> dict[str, int]:

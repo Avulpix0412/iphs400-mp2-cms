@@ -5,16 +5,17 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable
+from itertools import zip_longest
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.datastructures import FormData
 
 from app import db, game, guides
-from app.rendering import render_markdown
+from app.rendering import highlight, render_markdown
 from app.accounts import User
-from app.guides import Guide, GuideFields
-from app.web import flash, redirect, signed_in_user, templates
+from app.guides import Guide, GuideFields, ReviewNote
+from app.web import AdminRequired, flash, redirect, signed_in_user, templates
 
 router = APIRouter(dependencies=[Depends(signed_in_user)])
 
@@ -61,13 +62,16 @@ def editor_page(request: Request, user: User, guide: Guide | None,
     with db.connect() as conn:
         heroes = game.heroes(conn)
         patches = guides.patch_choices(conn, guide)
+        rounds = guides.review_rounds(conn, user, guide.id) if guide else []
     title = f"编辑攻略：{guide.title_zh or '（无标题）'}" if guide else "写攻略"
     return templates.TemplateResponse(
         request, "admin/guide_edit.html",
         {"title": title, "user": user, "guide": guide, "fields": fields,
          "heroes": heroes, "patches": patches, "error": error,
+         "review_rounds": rounds,
          "can_submit": guide is not None and guides.can_submit(user, guide),
-         "can_publish": guide is not None and guides.can_publish(user, guide)},
+         "can_publish": guide is not None and guides.can_publish(user, guide),
+         "can_review": guide is not None and guides.can_review(user, guide)},
         status_code=status_code)
 
 
@@ -143,11 +147,17 @@ def edit_guide_form(request: Request,
 @router.get("/admin/guides/{guide_id}/preview")
 def preview_guide(request: Request, user: Annotated[User, Depends(signed_in_user)],
                   guide: Annotated[Guide, Depends(visible_guide)]):
+    """The Guide as Readers will see it, with the passages the latest Review
+    notes quote highlighted (here only: the Site build never highlights)."""
+    with db.connect() as conn:
+        quotes = guides.quotes_to_highlight(conn, user, guide)
+    body_zh, found_zh = highlight(render_markdown(guide.body_zh), quotes)
+    body_en, found_en = highlight(render_markdown(guide.body_en), quotes)
     return templates.TemplateResponse(
         request, "admin/guide_preview.html",
         {"title": f"预览：{guide.title_zh or '（无标题）'}", "user": user,
-         "guide": guide, "body_zh": render_markdown(guide.body_zh),
-         "body_en": render_markdown(guide.body_en)})
+         "guide": guide, "body_zh": body_zh, "body_en": body_en,
+         "quotes": quotes, "found": found_zh | found_en})
 
 
 @router.post("/admin/guides/{guide_id}")
@@ -196,3 +206,74 @@ def publish_guide(request: Request, guide_id: int,
                   fields: Annotated[GuideFields | None, Depends(sent_guide_fields)]):
     return workflow_step(request, user, guide_id, fields, guides.publish,
                          "已发布。点击“更新网站”后，读者才会在公开网站上看到它。")
+
+
+async def sent_review_notes(request: Request) -> list[ReviewNote]:
+    """The Review note builder's rows, in order. Rows left wholly blank are
+    dropped; a half-filled row is kept, for app/guides.py to refuse."""
+    form = await request.form()
+    def texts(name: str) -> list[str]:  # anything but text (a file) is blank
+        return [value if isinstance(value, str) else "" for value in form.getlist(name)]
+    rows = zip_longest(texts("quote"), texts("advice"), fillvalue="")
+    return [ReviewNote(quote, advice) for quote, advice in rows
+            if quote.strip() or advice.strip()]
+
+
+BLANK_NOTE_ROWS = 3
+
+
+def review_page(request: Request, user: User, guide: Guide,
+                notes: list[ReviewNote], *, error: str | None = None,
+                status_code: int = 200):
+    rows = notes + [ReviewNote("", "")] * max(BLANK_NOTE_ROWS - len(notes), 1)
+    return templates.TemplateResponse(
+        request, "admin/guide_review.html",
+        {"title": f"审核：{guide.title_zh or '（无标题）'}", "user": user,
+         "guide": guide, "notes": rows, "error": error,
+         "body_zh": render_markdown(guide.body_zh),
+         "body_en": render_markdown(guide.body_en)},
+        status_code=status_code)
+
+
+@router.get("/admin/guides/{guide_id}/review")
+def review_guide(request: Request, user: Annotated[User, Depends(signed_in_user)],
+                 guide: Annotated[Guide, Depends(visible_guide)]):
+    if not user.can("publish_guides"):
+        raise AdminRequired
+    return review_page(request, user, guide, [])
+
+
+ReviewStep = Callable[[sqlite3.Connection, User, int, list[ReviewNote]], Guide]
+
+
+def review_step(request: Request, user: User, guide_id: int,
+                notes: list[ReviewNote], step: ReviewStep, done: str):
+    """Send a Guide back with the Review notes from the review screen. If
+    that is refused, the screen shows the reason and keeps what was typed."""
+    try:
+        with db.connect() as conn:
+            step(conn, user, guide_id, notes)
+    except guides.Refused as refused:
+        if not user.can("publish_guides"):
+            return refused_page(request, user, guide_id, None, refused)
+        return review_page(request, user, visible_guide(guide_id, user), notes,
+                           error=refused.message, status_code=status_for(refused))
+    flash(request, done)
+    return redirect(f"/admin/guides/{guide_id}/edit")
+
+
+@router.post("/admin/guides/{guide_id}/return")
+def return_guide(request: Request, guide_id: int,
+                 user: Annotated[User, Depends(signed_in_user)],
+                 notes: Annotated[list[ReviewNote], Depends(sent_review_notes)]):
+    return review_step(request, user, guide_id, notes, guides.return_guide,
+                       "已退回给作者，作者会在草稿顶部看到审核意见。")
+
+
+@router.post("/admin/guides/{guide_id}/unpublish")
+def unpublish_guide(request: Request, guide_id: int,
+                    user: Annotated[User, Depends(signed_in_user)],
+                    notes: Annotated[list[ReviewNote], Depends(sent_review_notes)]):
+    return review_step(request, user, guide_id, notes, guides.unpublish,
+                       "已撤下，攻略作为草稿回到作者手里。点击“更新网站”后，"
+                       "它才会从公开网站上消失。")

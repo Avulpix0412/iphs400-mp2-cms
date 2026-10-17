@@ -5,7 +5,9 @@
   <p>状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
     · 网址名：<code>{{ guide.slug }}</code>
     · 更新于 {{ guide.updated_at }}</p>
-  <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）</p>
+  <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）
+    {% if can_review %}· <a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/review">{{ "审核（发布或退回）" if guide.status == "submitted" else "撤下…" }}</a>{% endif %}</p>
+  {% include "admin/_review_notes.html" %}
   {% endif %}
 
   <form method="post" action="{{ console_root(request) }}{{ 'admin/guides/%d' % guide.id if guide else 'admin/guides' }}">
