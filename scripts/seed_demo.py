@@ -3,22 +3,24 @@
 
     uv run --env-file .env python scripts/seed_demo.py
 
-Creates one Admin and one Editor, a few Heroes, and a few Patches (the last
-one, 6.7, becomes the Current Patch). The passwords come from
+Creates one Admin and one Editor, a few Heroes, a few Patches (the last
+one, 6.7, becomes the Current Patch), and demo Guides in Draft, Submitted and
+Published, made through the Guide workflow just as the console makes them. The passwords come from
 CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD; there are no default passwords, so
 the script refuses to run without both. Running it again leaves existing
-accounts, Heroes and Patches alone.
+accounts, Heroes and Patches alone, and adds no Guides once any exist.
 
 The rubric expects this to run clean on a fresh clone with .env.example values
 (item E4), because the database itself is never committed. Later tickets add
-other Game Terms, Guides, a Page and Tournament items.
+other Game Terms, a Page and Tournament items.
 """
 from __future__ import annotations
 
 import os
+import sqlite3
 import sys
 
-from app import accounts, db, game, settings
+from app import accounts, db, game, guides, settings
 
 # Matches DEMO_USERS in tests/conftest.py (which uses its own fixed passwords).
 DEMO_USERS = [
@@ -36,6 +38,50 @@ DEMO_HEROES = [
 ]
 # Oldest first, so the last one added is the Current Patch.
 DEMO_PATCHES = ["6.5", "6.6", "6.7"]
+
+# Author's role, Hero (English name), Patch, status reached, Chinese title,
+# Chinese body, English title, English body.
+DEMO_GUIDES = [
+    ("editor", "Vanessa", "6.7", "draft", "瓦妮莎海盗船流（写作中）",
+     "## 思路\n\n先拿船，再找炮。终局阵容还在测试。", "", ""),
+    ("editor", "Dooley", "6.7", "submitted", "杜利核心流入门",
+     "## 终局阵容\n\n围绕核心，前期拿**能量**物品。\n\n## 运营\n\n第 5 天前定型。",
+     "Dooley core build for beginners",
+     "## Final lineup\n\nBuild around the core and take **energy** items early."),
+    ("editor", "Pygmalien", "6.6", "published", "皮格马利翁经济流",
+     "## 思路\n\n前期攒钱，中期一次性升级。", "", ""),
+    ("admin", "Mak", "6.7", "published", "马克药水流（6.7）",
+     "## 终局阵容\n\n药水叠毒，配合治疗。\n\n| 天数 | 目标 |\n|---|---|\n| 1–4 | 拿药水 |\n| 5+ | 叠毒 |",
+     "Mak potion build (6.7)",
+     "## Final lineup\n\nStack poison with potions and heal through the midgame."),
+]
+
+
+def seed_guides(conn: sqlite3.Connection) -> None:
+    admin = _seed_user(conn, "admin")
+    if guides.guides(conn, admin):
+        print("guides: some already exist, none added.")
+        return
+    heroes = {hero.name_en: hero.id for hero in game.heroes(conn)}
+    patches = {patch.name: patch.id for patch in game.patches(conn)}
+    for (role, hero, patch, status, title_zh, body_zh,
+         title_en, body_en) in DEMO_GUIDES:
+        author = _seed_user(conn, role)
+        guide = guides.create(conn, author, guides.GuideFields(
+            title_zh=title_zh, body_zh=body_zh, title_en=title_en,
+            body_en=body_en, hero_id=heroes[hero], patch_id=patches[patch]))
+        if status != "draft" and guides.can_submit(author, guide):
+            guides.submit(conn, author, guide.id)
+        if status == "published":
+            guides.publish(conn, admin, guide.id)
+        print(f"guide: created {title_zh} ({guides.STATUS_LABELS[status]}).")
+
+
+def _seed_user(conn: sqlite3.Connection, role: str) -> accounts.User:
+    email = next(email for r, email, *_ in DEMO_USERS if r == role)
+    user = accounts.user_with_email(conn, email)
+    assert user is not None, f"{email} should have been created above"
+    return user
 
 
 def main() -> int:
@@ -73,6 +119,7 @@ def main() -> int:
                 print(f"patch: {name} left unchanged ({refused.message})")
                 continue
             print(f"patch: created {name}.")
+        seed_guides(conn)
     print(f"Database: {settings.database_path()}")
     return 0
 

@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  {% if guide %}
+  <p>状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
+    · 网址名：<code>{{ guide.slug }}</code>
+    · 更新于 {{ guide.updated_at }}</p>
+  <p><a href="/admin/guides/{{ guide.id }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）</p>
+  {% endif %}
+
+  <form method="post" action="{{ '/admin/guides/%d' % guide.id if guide else '/admin/guides' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>英雄
+      <select name="hero_id" required>
+        <option value="">请选择英雄</option>
+        {% for hero in heroes %}
+        <option value="{{ hero.id }}"{% if hero.id == fields.hero_id %} selected{% endif %}>{{ hero.name_zh }}（{{ hero.name_en }}）</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>版本
+      <select name="patch_id" required>
+        {% for patch in patches %}
+        <option value="{{ patch.id }}"{% if patch.id == fields.patch_id %} selected{% endif %}>{{ patch.name }}{% if patch.is_current %}（当前版本）{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if guide and user.can("edit_guide_slugs") %}
+    <label>网址名（公开网址 guides/网址名/，改动后旧链接会失效）
+      <input type="text" name="slug" value="{{ fields.slug }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*">
+    </label>
+    {% endif %}
+
+    <fieldset>
+      <legend>中文版（提交审核前必须填写）</legend>
+      <label>标题
+        <input type="text" name="title_zh" value="{{ fields.title_zh }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_zh" rows="16">{{ fields.body_zh }}</textarea>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>英文版（可选）</legend>
+      <label>标题
+        <input type="text" name="title_en" value="{{ fields.title_en }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_en" rows="16">{{ fields.body_en }}</textarea>
+      </label>
+    </fieldset>
+
+    <button type="submit">{{ "保存" if guide and guide.status != "draft" else "保存草稿" }}</button>
+    {% if can_submit %}
+    <button type="submit" formaction="/admin/guides/{{ guide.id }}/submit">提交审核</button>
+    {% endif %}
+    {% if can_publish %}
+    <button type="submit" formaction="/admin/guides/{{ guide.id }}/publish">发布</button>
+    {% endif %}
+  </form>
+{% endblock %}

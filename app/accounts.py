@@ -40,6 +40,19 @@ class AccountDeactivated(Refused):
         super().__init__("账号已停用，无法登录。如有疑问，请联系管理员。")
 
 
+# A role is a bundle of capabilities. Code asks `user.can(...)`, never which
+# role someone has, so a rule can move between roles without touching callers.
+CAPABILITIES: dict[str, frozenset[str]] = {
+    "admin": frozenset({
+        "publish_guides",      # Publish Submitted Guides, and their own Drafts
+        "manage_all_guides",   # see and edit everyone's Guides, any Hero
+        "edit_guide_slugs",
+        "manage_game",         # Heroes and Patches
+    }),
+    "editor": frozenset(),
+}
+
+
 @dataclass(frozen=True)
 class User:
     id: int
@@ -48,6 +61,9 @@ class User:
     display_name: str | None
     state: str
     needs_setup: bool
+
+    def can(self, capability: str) -> bool:
+        return capability in CAPABILITIES[self.role]
 
 
 def _user_from_row(row: sqlite3.Row) -> User:
@@ -86,6 +102,12 @@ def create_user(conn: sqlite3.Connection, *, email: str, password: str,
         raise
     row = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
     return _user_from_row(row)
+
+
+def user_with_email(conn: sqlite3.Connection, email: str) -> User | None:
+    row = conn.execute("SELECT * FROM users WHERE email = ?",
+                       (_normalise_email(email),)).fetchone()
+    return _user_from_row(row) if row else None
 
 
 def log_in(conn: sqlite3.Connection, email: str, password: str) -> tuple[str, User]:

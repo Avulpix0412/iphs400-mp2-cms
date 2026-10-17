@@ -47,6 +47,25 @@ CREATE TABLE IF NOT EXISTS patches (
     name       TEXT NOT NULL UNIQUE CHECK (name != ''),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- A Guide's slug is filled in right after its row is created, since it ends
+-- with the Guide's own id. Status changes only through app/guides.py.
+CREATE TABLE IF NOT EXISTS guides (
+    id           INTEGER PRIMARY KEY,
+    slug         TEXT UNIQUE,
+    title_zh     TEXT NOT NULL DEFAULT '',
+    body_zh      TEXT NOT NULL DEFAULT '',
+    title_en     TEXT NOT NULL DEFAULT '',
+    body_en      TEXT NOT NULL DEFAULT '',
+    hero_id      INTEGER NOT NULL REFERENCES game_terms (id),
+    patch_id     INTEGER NOT NULL REFERENCES patches (id),
+    author_id    INTEGER NOT NULL REFERENCES users (id),
+    status       TEXT NOT NULL DEFAULT 'draft'
+                 CHECK (status IN ('draft', 'submitted', 'published')),
+    created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TEXT
+);
 """
 
 

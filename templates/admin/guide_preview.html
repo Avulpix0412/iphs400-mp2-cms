@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <p><a href="/admin/guides/{{ guide.id }}/edit">返回编辑</a>
+    · 状态：{{ guide.status_label }}</p>
+  <p>这是读者将会看到的样子（显示已保存的内容）。</p>
+
+  <article lang="zh-CN">
+    <h1>{{ guide.title_zh or "（无标题）" }}</h1>
+    <p>{{ guide.hero_name_zh }} · {{ guide.patch_name }} · {{ guide.author_name }}</p>
+    {{ body_zh | safe }}
+  </article>
+
+  <hr>
+  {% if guide.title_en or guide.body_en %}
+  <article lang="en">
+    <h1>{{ guide.title_en or "(untitled)" }}</h1>
+    <p>{{ guide.hero_name_en }} · {{ guide.patch_name }} · {{ guide.author_name }}</p>
+    {{ body_en | safe }}
+  </article>
+  {% else %}
+  <p>这篇攻略没有英文版，不会出现在英文网站上。</p>
+  {% endif %}
+{% endblock %}

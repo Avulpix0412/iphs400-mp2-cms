@@ -102,9 +102,12 @@ only ever shows Official names.
 _Avoid_: nickname (外号), alias, translation
 
 **Slug** (网址名):
-The short web-address name of a Hero, derived from its English Official name
-(`Vanessa` → `vanessa`). No two Heroes share one, and it follows the English
-name when that is corrected.
+The short web-address name of a Hero or a Guide. A Hero's is derived from its
+English Official name (`Vanessa` → `vanessa`) and follows that name when it is
+corrected. A Guide's is `<hero-slug>-<id>` (`vanessa-12`), given when the Guide
+is created; it never changes on its own (not with the title, the Hero or a
+Revision), only when an Admin edits it, so shared links keep working. No two
+Heroes, and no two Guides, share one.
 _Avoid_: URL name, permalink, handle
 
 **Patch** (版本):

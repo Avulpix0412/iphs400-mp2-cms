@@ -2,4 +2,12 @@
 {% block content %}
   <h1>你好，{{ user.display_name }}</h1>
   <p>欢迎回到大巴扎攻略站管理后台。</p>
+
+  <h2>{{ "全部攻略" if user.can("manage_all_guides") else "我的攻略" }}</h2>
+  <ul>
+    {% for status, label in statuses.items() %}
+    <li><a href="/admin/guides?status={{ status }}">{{ label }}：{{ counts[status] }}</a></li>
+    {% endfor %}
+  </ul>
+  <p><a href="/admin/guides/new">写攻略</a></p>
 {% endblock %}

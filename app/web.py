@@ -109,7 +109,7 @@ def admin_user(request: Request) -> accounts.User:
     """Dependency for Admin-only pages: the signed-in Admin. Editors are
     refused, whether they followed a link or typed the URL."""
     user = signed_in_user(request)
-    if user.role != "admin":
+    if not user.can("manage_game"):
         raise AdminRequired
     return user
 
