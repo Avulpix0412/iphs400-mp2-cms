@@ -1,9 +1,12 @@
 {% extends "admin/base.html" %}
 {% block content %}
   <h1>{{ title }}</h1>
-  <p><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">返回编辑</a>
+  <p><a href="{{ console_root(request) }}{{ guide.console_path }}/edit">返回编辑</a>
     · 状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
     · {{ guide.hero_name_zh }} · {{ guide.patch_name }}</p>
+  {% if guide.is_revision and guide.guide_changed_since %}
+  <p class="flash flash-error">在这份修订打开之后，攻略又被修改过（更新于 {{ guide.guide.updated_at[:16] }}）。发布这份修订会用它的内容替换攻略现在的全部内容，那些修改会丢失。</p>
+  {% endif %}
 
   <article lang="zh-CN">
     <h2>{{ guide.title_zh or "（无标题）" }}</h2>
@@ -19,7 +22,7 @@
 
   {% if guide.status == "submitted" %}
   <hr>
-  <form method="post" action="{{ console_root(request) }}admin/guides/{{ guide.id }}/publish">
+  <form method="post" action="{{ console_root(request) }}{{ guide.console_path }}/publish">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <p>可以发布了？<button type="submit">发布</button></p>
   </form>
@@ -27,7 +30,7 @@
   {% endif %}
   {% if guide.status in ("submitted", "published") %}
   <hr>
-  <form method="post" action="{{ console_root(request) }}admin/guides/{{ guide.id }}/{{ 'return' if guide.status == 'submitted' else 'unpublish' }}">
+  <form method="post" action="{{ console_root(request) }}{{ guide.console_path }}/{{ 'return' if guide.status == 'submitted' else 'unpublish' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <h2>审核意见{% if guide.status == "published" %}（可选）{% endif %}</h2>
     <p>每条意见引用攻略正文里的一段原文（从上面复制），再写上修改建议。空着的行会被忽略。</p>

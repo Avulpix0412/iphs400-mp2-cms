@@ -47,6 +47,9 @@
     <a href="{{ console_root(request) }}admin/heroes">英雄</a>
     <a href="{{ console_root(request) }}admin/patches">版本</a>
     {% endif %}
+    {% if user.can("manage_trash") and not user.needs_setup %}
+    <a href="{{ console_root(request) }}admin/trash">回收站</a>
+    {% endif %}
     <span>{{ user.display_name or "新账号" }}（{{ "管理员" if user.role == "admin" else "编辑" }}）</span>
     <form method="post" action="{{ console_root(request) }}logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">

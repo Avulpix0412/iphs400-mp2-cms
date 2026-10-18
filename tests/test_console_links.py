@@ -98,3 +98,31 @@ def test_the_login_and_setup_pages_link_relatively_and_their_links_work(client):
     new_editor_needing_setup()
     login(client, "new@example.test", "temporary-pw")
     check_page(client, "/admin/setup", client.get("/admin/setup").text)
+
+
+def test_revision_and_trash_pages_link_relatively_and_their_links_work(
+        admin, client_as):
+    from test_t03_guides import act
+    from test_t06_revisions_trash import delete, open_revision, revision_page
+
+    editor = client_as("editor")
+    edit_page = new_guide(editor)
+    act(editor, edit_page, "submit")
+    act(admin, edit_page, "publish")
+    open_revision(editor, edit_page)
+    revision = revision_page(edit_page)
+    act(editor, revision, "submit")
+    guide = edit_page.removesuffix("/edit")
+    for c, page_url in [(editor, revision), (editor, f"{guide}/revision/preview"),
+                        (editor, f"{guide}/delete"),
+                        (editor, f"{guide}/revision/delete"), (admin, revision),
+                        (admin, f"{guide}/revision/review")]:
+        response = c.get(page_url)
+        assert response.status_code == 200, page_url
+        check_page(c, page_url, response.text)
+
+    delete(editor, new_guide(editor))
+    for page_url in ["/admin/trash", "/admin/trash/2/delete"]:
+        response = admin.get(page_url)
+        assert response.status_code == 200, page_url
+        check_page(admin, page_url, response.text)

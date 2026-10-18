@@ -1,0 +1,41 @@
+{# The Guide form's fields, which a Revision's form shares. Only a saved
+   Guide (never its Revision) shows Admins the slug field. #}
+    <label>英雄
+      <select name="hero_id" required>
+        <option value="">请选择英雄</option>
+        {% for hero in heroes %}
+        <option value="{{ hero.id }}"{% if hero.id == fields.hero_id %} selected{% endif %}>{{ hero.name_zh }}（{{ hero.name_en }}）</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>版本
+      <select name="patch_id" required>
+        {% for patch in patches %}
+        <option value="{{ patch.id }}"{% if patch.id == fields.patch_id %} selected{% endif %}>{{ patch.name }}{% if patch.is_current %}（当前版本）{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if guide and not revision and user.can("edit_guide_slugs") %}
+    <label>网址名（公开网址 guides/网址名/，改动后旧链接会失效）
+      <input type="text" name="slug" value="{{ fields.slug }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*">
+    </label>
+    {% endif %}
+
+    <fieldset>
+      <legend>中文版（提交审核前必须填写）</legend>
+      <label>标题
+        <input type="text" name="title_zh" value="{{ fields.title_zh }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_zh" rows="16">{{ fields.body_zh }}</textarea>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>英文版（可选）</legend>
+      <label>标题
+        <input type="text" name="title_en" value="{{ fields.title_en }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_en" rows="16">{{ fields.body_en }}</textarea>
+      </label>
+    </fieldset>

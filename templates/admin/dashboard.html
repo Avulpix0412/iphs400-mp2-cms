@@ -5,10 +5,10 @@
 
   {% if returned %}
   <h2><span class="badge">被退回或撤下 {{ returned | length }}</span></h2>
-  <p>这些攻略回到了你手里，打开后可以在顶部看到审核意见，改好后再提交审核。</p>
+  <p>这些攻略或修订回到了你手里，打开后可以在顶部看到审核意见，改好后再提交审核。</p>
   <ul>
     {% for guide in returned %}
-    <li><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/edit">{{ guide.title_zh or "（无标题）" }}</a></li>
+    <li><a href="{{ console_root(request) }}{{ guide.console_path }}/edit">{{ guide.title_zh or "（无标题）" }}</a>{% if guide.is_revision %}（修订）{% endif %}</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -21,7 +21,7 @@
     <tbody>
     {% for guide in queue %}
       <tr>
-        <td><a href="{{ console_root(request) }}admin/guides/{{ guide.id }}/review">{{ guide.title_zh or "（无标题）" }}</a></td>
+        <td><a href="{{ console_root(request) }}{{ guide.console_path }}/review">{{ guide.title_zh or "（无标题）" }}</a>{% if guide.is_revision %}（修订）{% endif %}</td>
         <td>{{ guide.author_name }}</td>
         <td>{{ guide.hero_name_zh }}</td>
         <td>{{ guide.patch_name }}</td>

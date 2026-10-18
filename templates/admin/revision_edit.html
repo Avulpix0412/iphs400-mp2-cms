@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% set guide = revision %}
+{% set path = revision.console_path %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>状态：{{ revision.status_label }} · 作者：{{ revision.author_name }}
+    · 网址名：<code>{{ revision.slug }}</code>
+    · 更新于 {{ revision.updated_at }}</p>
+  <p>这是对<a href="{{ console_root(request) }}{{ revision.guide.console_path }}/edit">已发布攻略</a>的修订。审核通过前，网站上仍显示原来的版本；通过后，修订会完全替换原来的内容，网址不变。</p>
+  <p><a href="{{ console_root(request) }}{{ path }}/preview">预览修订</a>（显示已保存的内容）
+    {% if can_review %}· <a href="{{ console_root(request) }}{{ path }}/review">审核（发布或退回）</a>{% endif %}
+    {% if can_discard %}· <a href="{{ console_root(request) }}{{ path }}/delete">放弃修订…</a>{% endif %}</p>
+  {% if guide.is_revision and guide.guide_changed_since %}
+  <p class="flash flash-error">在这份修订打开之后，攻略又被修改过（更新于 {{ guide.guide.updated_at[:16] }}）。发布这份修订会用它的内容替换攻略现在的全部内容，那些修改会丢失。</p>
+  {% endif %}
+  {% include "admin/_review_notes.html" %}
+
+  <form method="post" action="{{ console_root(request) }}{{ path }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    {% include "admin/_guide_fields.html" %}
+
+    <button type="submit">{{ "保存" if revision.status != "draft" else "保存草稿" }}</button>
+    {% if can_submit %}
+    <button type="submit" formaction="{{ console_root(request) }}{{ path }}/submit">提交审核</button>
+    {% endif %}
+    {% if can_publish %}
+    <button type="submit" formaction="{{ console_root(request) }}{{ path }}/publish">发布</button>
+    {% endif %}
+  </form>
+{% endblock %}
