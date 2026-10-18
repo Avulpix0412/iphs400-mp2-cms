@@ -1,0 +1,6 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>没有权限</h1>
+  <p>只有管理员可以使用此页面。如果你需要这里的功能，请联系管理员。</p>
+  <p><a href="{{ console_root(request) }}admin/dashboard">回到控制台</a></p>
+{% endblock %}

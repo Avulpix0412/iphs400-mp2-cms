@@ -58,7 +58,8 @@ def deploys(tmp_path, monkeypatch) -> list[Path]:
 
 
 def add_user(**fields) -> None:
-    """Arrange an extra account (until the Users page exists to make one)."""
+    """Arrange an extra account directly, in any state, with its setup done
+    (quicker than making it on the Users page, which T09's tests do)."""
     from app import accounts, db
 
     with db.connect() as conn:

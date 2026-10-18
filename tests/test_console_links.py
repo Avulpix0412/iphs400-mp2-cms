@@ -126,3 +126,21 @@ def test_revision_and_trash_pages_link_relatively_and_their_links_work(
         response = admin.get(page_url)
         assert response.status_code == 200, page_url
         check_page(admin, page_url, response.text)
+
+
+def test_users_pages_and_the_refusal_page_link_relatively_and_their_links_work(
+        admin, client_as):
+    from test_t09_users import EDITOR, account_page, create_account
+
+    create_account(admin, "writer@example.test")
+    editor_page = account_page(admin, EDITOR)
+    for page_url in ["/admin/users", editor_page, f"{editor_page}/deactivate",
+                     account_page(admin, "writer@example.test")]:
+        response = admin.get(page_url)
+        assert response.status_code == 200, page_url
+        check_page(admin, page_url, response.text)
+
+    editor = client_as("editor")
+    refused = editor.get(editor_page)
+    assert refused.status_code == 403
+    check_page(editor, editor_page, refused.text)

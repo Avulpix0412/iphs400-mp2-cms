@@ -101,3 +101,6 @@ ts,session,phase,provider,model,effort,ctx_pct,five_h_pct,weekly_pct
 2026-10-17T20:53:02Z,c8d3ca57,T05,anthropic,Opus 5.5,high,4.0,74,10
 2026-10-17T21:09:07Z,c8d3ca57,T06,anthropic,Opus 5.5,high,22.0,88,12
 2026-10-17T21:18:29Z,c8d3ca57,T06,anthropic,Opus 5.5,high,25.0,94,13
+2026-10-18T00:26:50Z,c8d3ca57,T06,anthropic,Opus 5.5,high,26.0,11,15
+2026-10-18T00:36:09Z,c8d3ca57,T06,anthropic,Opus 5.5,high,27.0,12,15
+2026-10-18T01:03:35Z,dfc2e1c8,T09,anthropic,Opus 5.5,high,20.0,24,16

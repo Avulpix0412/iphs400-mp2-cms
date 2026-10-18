@@ -1,0 +1,43 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>用户</h1>
+  <p>登录邮箱只在这里显示，不会出现在公开网站上。被禁止投稿或已停用的用户，已发布的攻略仍然留在网站上。</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>昵称</th><th>登录邮箱</th><th>角色</th><th>状态</th><th>攻略</th><th>上次登录</th></tr></thead>
+    <tbody>
+    {% for account in users %}
+      {% set guide_counts = counts.get(account.id, no_guides) %}
+      <tr>
+        <td><a href="{{ console_root(request) }}admin/users/{{ account.id }}">{{ account.display_name or "（未完成首次登录设置）" }}</a></td>
+        <td>{{ account.email }}</td>
+        <td>{{ roles[account.role] }}</td>
+        <td>{{ states[account.state] }}{% if account.needs_setup %}（待首次登录设置）{% endif %}</td>
+        <td>已发布 {{ guide_counts.published }} · 共 {{ guide_counts.total }}</td>
+        <td>{{ account.last_login_at[:16] if account.last_login_at else "从未登录" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <h2>添加账号</h2>
+  <p>对方用临时密码登录后，必须先设置自己的密码和昵称，才能使用管理后台。</p>
+  <form method="post" action="{{ console_root(request) }}admin/users">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>登录邮箱
+      <input type="email" name="email" value="{{ new_account.email }}" required>
+    </label>
+    <label>角色
+      <select name="role">
+        {% for role, label in roles.items() %}
+        <option value="{{ role }}"{% if role == new_account.role %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>临时密码（至少 {{ min_password_length }} 个字符）
+      <input type="text" name="temporary_password" required minlength="{{ min_password_length }}" autocomplete="off">
+    </label>
+    <button type="submit">添加账号</button>
+  </form>
+{% endblock %}

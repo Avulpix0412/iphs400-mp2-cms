@@ -195,15 +195,3 @@ def test_display_names_are_unique_regardless_of_letter_case(client):
     response = submit_setup(client, "bazaarbob", "my-own-password")
     assert response.status_code == 400
     assert "该昵称已被使用" in response.text
-
-
-def test_deactivating_an_account_ends_its_open_session(client_as, database):
-    from app import accounts, db
-
-    editor = client_as("editor")
-    assert editor.get("/admin/dashboard").status_code == 200
-    with db.connect() as conn:  # arranged directly until T09's Users page exists
-        accounts.set_state(conn, DEMO_USERS["editor"]["email"], "deactivated")
-
-    after = editor.get("/admin/dashboard", follow_redirects=False)
-    assert after.status_code == 303 and after.headers["location"] == "/login"

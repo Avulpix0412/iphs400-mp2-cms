@@ -19,6 +19,7 @@ from app import settings
 NOW = "strftime('%Y-%m-%d %H:%M:%f', 'now')"
 
 SCHEMA = f"""
+-- last_login_at was added in T09 (see ADDED_COLUMNS).
 CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS users (
     state         TEXT NOT NULL DEFAULT 'active'
                   CHECK (state IN ('active', 'submission_ban', 'deactivated')),
     needs_setup   INTEGER NOT NULL DEFAULT 0,
-    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -140,6 +142,7 @@ CREATE TABLE IF NOT EXISTS removed_guides (
 # CREATE TABLE IF NOT EXISTS leaves an older table as it was, so connect()
 # adds whichever of these it lacks.
 ADDED_COLUMNS = [
+    ("users", "last_login_at", "TEXT"),
     ("guides", "trashed_at", "TEXT"),
     ("guides", "restored_at", "TEXT"),
     ("review_rounds", "revision_id", "INTEGER"),

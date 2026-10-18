@@ -9,16 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app import db, guides
 from app.accounts import User
 from app.routes.guides import status_for
-from app.web import AdminRequired, flash, redirect, signed_in_user, templates
+from app.web import flash, redirect, requires, templates
 
 router = APIRouter()
 
 
-def trash_manager(user: Annotated[User, Depends(signed_in_user)]) -> User:
-    """The signed-in Admin; Editors are refused, even by typed URL."""
-    if not user.can("manage_trash"):
-        raise AdminRequired
-    return user
+trash_manager = requires("manage_trash")
 
 
 def trash_page(request: Request, user: User, *, error: str | None = None,

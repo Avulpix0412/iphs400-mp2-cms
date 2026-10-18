@@ -249,7 +249,7 @@ def review_page(request: Request, user: User, guide: Guide | Revision,
 def review_guide(request: Request, user: Annotated[User, Depends(signed_in_user)],
                  guide: Annotated[Guide, Depends(visible_guide)]):
     if not user.can("publish_guides"):
-        raise AdminRequired
+        raise AdminRequired(user)
     return review_page(request, user, guide, [])
 
 
@@ -407,7 +407,7 @@ def preview_revision(request: Request, user: Annotated[User, Depends(signed_in_u
 def review_revision(request: Request, user: Annotated[User, Depends(signed_in_user)],
                     revision: Annotated[Revision, Depends(open_revision_of)]):
     if not user.can("publish_guides"):
-        raise AdminRequired
+        raise AdminRequired(user)
     return review_page(request, user, revision, [])
 
 
