@@ -10,6 +10,9 @@
     <label>官方英文名
       <input type="text" name="name_en" value="{{ name_en }}" required>
     </label>
+    <label>外号（可选，用 、 或 | 分隔）
+      <input type="text" name="nicknames" value="{{ nicknames }}">
+    </label>
     <button type="submit">保存</button>
     <a href="{{ console_root(request) }}admin/heroes">取消</a>
   </form>

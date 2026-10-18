@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>从 CSV 导入游戏术语</h1>
+  <p>上传后会先显示预览：哪些术语会新增、哪些会修改、哪些行被拒绝。确认之前不会保存任何内容。</p>
+  <p>CSV 文件用 UTF-8 编码（Excel 里选“CSV UTF-8”），第一行是表头：</p>
+  <pre><code>kind,name_zh,name_en,nicknames
+英雄,瓦妮莎,Vanessa,瓦姐|V姐
+item,海盗弯刀,Pirate Scimitar,</code></pre>
+  <ul>
+    <li><code>kind</code>：种类，写中文或英文都可以：{% for kind, label in kinds.items() %}{{ label }}（{{ kind }}）{% if not loop.last %}、{% endif %}{% endfor %}。</li>
+    <li><code>name_zh</code>、<code>name_en</code>：官方中文名和官方英文名，两个都必须填写。</li>
+    <li><code>nicknames</code>：外号，可以省略这一列；多个外号用 、 或 | 分隔。留空时保留术语已有的外号。</li>
+  </ul>
+  <p>种类和官方英文名（不区分大小写）都和现有术语相同的行，会修改那个术语；其他的行会新增术语。</p>
+  <form method="post" action="{{ console_root(request) }}admin/terms/import" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>CSV 文件
+      <input type="file" name="file" accept=".csv,text/csv" required>
+    </label>
+    <button type="submit">预览导入</button>
+    <a href="{{ console_root(request) }}admin/terms">取消</a>
+  </form>
+{% endblock %}

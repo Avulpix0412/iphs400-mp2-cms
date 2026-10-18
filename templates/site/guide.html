@@ -9,6 +9,6 @@
       · <a href="{{ link("authors/" ~ guide.author_id ~ "/") }}">{{ guide.author_name }}</a>
       · {{ t.updated }} {{ guide.updated_at[:10] }}
     </p>
-    {{ guide|localized("body", lang)|markdown|safe }}
+    {{ guide|localized("body", lang)|markdown(lang)|safe }}
   </article>
 {% endblock %}

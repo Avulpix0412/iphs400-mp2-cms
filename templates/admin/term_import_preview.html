@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>导入游戏术语：预览</h1>
+  <p>还没有保存任何内容。确认后才会导入下面新增和修改的术语；被拒绝的行不会导入。</p>
+
+  <h2>将新增 {{ plan.added|length }} 个</h2>
+  {% if plan.added %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>行</th><th>种类</th><th>官方中文名</th><th>官方英文名</th><th>外号</th></tr></thead>
+    <tbody>
+    {% for row in plan.added %}
+      <tr><td>第 {{ row.number }} 行</td><td>{{ kinds[row.kind] }}</td><td>{{ row.name_zh }}</td><td>{{ row.name_en }}</td><td>{{ row.nicknames|join("、") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  <h2>将修改 {{ plan.changed|length }} 个</h2>
+  {% if plan.changed %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>行</th><th>种类</th><th>官方名称</th><th>外号</th></tr></thead>
+    <tbody>
+    {% for term, row in plan.changed %}
+      <tr><td>第 {{ row.number }} 行</td><td>{{ kinds[row.kind] }}</td>
+        <td>{{ term.name_zh }}（{{ term.name_en }}）→ {{ row.name_zh }}（{{ row.name_en }}）</td>
+        <td>{% if row.nicknames and row.nicknames != term.nicknames %}{{ term.nicknames|join("、") or "（无）" }} → {{ row.nicknames|join("、") }}{% else %}{{ term.nicknames|join("、") }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if plan.unchanged %}<p>另有 {{ plan.unchanged }} 行和现有术语完全相同，不会改动。</p>{% endif %}
+
+  <h2>被拒绝 {{ plan.rejected|length }} 行</h2>
+  {% if plan.rejected %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>行</th><th>原因</th></tr></thead>
+    <tbody>
+    {% for number, reason in plan.rejected %}
+      <tr><td>第 {{ number }} 行</td><td class="wrap">{{ reason }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p>修改这些行后可以重新上传，已经导入的行不会重复新增。</p>
+  {% endif %}
+
+  {% if plan.added or plan.changed %}
+  <form method="post" action="{{ console_root(request) }}admin/terms/import/confirm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <input type="hidden" name="csv_file" value="{{ csv_file }}">
+    <button type="submit">确认导入</button>
+    <a href="{{ console_root(request) }}admin/terms/import">重新选择文件</a>
+  </form>
+  {% else %}
+  <p>这个文件里没有需要导入的行。<a href="{{ console_root(request) }}admin/terms/import">重新选择文件</a></p>
+  {% endif %}
+{% endblock %}

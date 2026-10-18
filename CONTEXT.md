@@ -102,6 +102,20 @@ The name the game itself uses for a Game Term in a given language. The site
 only ever shows Official names.
 _Avoid_: nickname (外号), alias, translation
 
+**Nickname** (外号):
+A name players use for a Game Term that the game itself doesn't, such as 瓦姐
+for 瓦妮莎. Admins record them so the preview can warn a writer who uses one
+without a Game Term marker. The site never shows a nickname in place of an
+Official name.
+_Avoid_: alias, abbreviation, slang
+
+**Game Term marker** (术语标记):
+`[[瓦妮莎]]` or `[[Vanessa]]` in a Guide's text: a Game Term named by either
+Official name, shown on the site as its Official name in the Reader's
+language. A marker that names no Game Term shows its text without the
+brackets, and the preview warns about it.
+_Avoid_: tag, link, shortcode
+
 **Slug** (网址名):
 The short web-address name of a Hero or a Guide. A Hero's is derived from its
 English Official name (`Vanessa` → `vanessa`) when the Hero is added, and stays

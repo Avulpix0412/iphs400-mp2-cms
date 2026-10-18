@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.datastructures import FormData
 
 from app import db, game, guides
-from app.rendering import highlight, render_markdown
+from app.rendering import highlight, render_markdown, title_warnings
 from app.accounts import User
 from app.guides import Guide, GuideFields, ReviewNote, Revision
 from app.web import AdminRequired, flash, redirect, signed_in_user, templates
@@ -150,17 +150,28 @@ def edit_guide_form(request: Request,
 def preview_page(request: Request, user: User, item: Guide | Revision):
     """The Guide (or Revision) as Readers will see it, with the passages its
     Review notes quote highlighted, the latest round's set apart from earlier
-    rounds' (here only: the Site build never highlights)."""
+    rounds' (here only: the Site build never highlights), and warnings about
+    its Game Term markers and nicknames, which never block Submit."""
     with db.connect() as conn:
         latest, earlier = guides.quotes_to_highlight(conn, user, item)
-    body_zh, found_zh = highlight(render_markdown(item.body_zh), latest, earlier)
-    body_en, found_en = highlight(render_markdown(item.body_en), latest, earlier)
+        glossary = game.glossary(conn)
+    rendered_zh = render_markdown(item.body_zh, "zh", glossary)
+    rendered_en = render_markdown(item.body_en, "en", glossary)
+    body_zh, found_zh = highlight(rendered_zh.html, latest, earlier)
+    body_en, found_en = highlight(rendered_en.html, latest, earlier)
+    term_warnings = [
+        f"{where}：{warning}" for where, warnings in [
+            ("中文标题", title_warnings(item.title_zh, "zh", glossary)),
+            ("中文正文", rendered_zh.warnings),
+            ("英文标题", title_warnings(item.title_en, "en", glossary)),
+            ("英文正文", rendered_en.warnings)]
+        for warning in warnings]
     return templates.TemplateResponse(
         request, "admin/guide_preview.html",
         {"title": f"预览：{item.title_zh or '（无标题）'}", "user": user,
          "guide": item, "body_zh": body_zh, "body_en": body_en,
          "quotes": latest + earlier, "earlier": earlier,
-         "found": found_zh | found_en})
+         "found": found_zh | found_en, "term_warnings": term_warnings})
 
 
 @router.get("/admin/guides/{guide_id}/preview")
@@ -236,12 +247,14 @@ def review_page(request: Request, user: User, guide: Guide | Revision,
                 status_code: int = 200):
     rows = notes + [ReviewNote("", "")] * max(BLANK_NOTE_ROWS - len(notes), 1)
     kind = "修订" if guide.is_revision else ""
+    with db.connect() as conn:
+        glossary = game.glossary(conn)
     return templates.TemplateResponse(
         request, "admin/guide_review.html",
         {"title": f"审核{kind}：{guide.title_zh or '（无标题）'}", "user": user,
          "guide": guide, "notes": rows, "error": error,
-         "body_zh": render_markdown(guide.body_zh),
-         "body_en": render_markdown(guide.body_en)},
+         "body_zh": render_markdown(guide.body_zh, "zh", glossary).html,
+         "body_en": render_markdown(guide.body_en, "en", glossary).html},
         status_code=status_code)
 
 

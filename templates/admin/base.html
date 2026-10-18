@@ -30,11 +30,14 @@
        each cell to one character per line. */
     .scroll { overflow-x: auto; }
     .scroll th, .scroll td { white-space: nowrap; }
+    .scroll td.wrap { white-space: normal; min-width: 14rem; }  /* a sentence */
     /* Review note quotes in the preview: the latest round solid, earlier
        rounds faint and underlined, so they differ without colour too. */
     mark { background: #ffd43b; color: #000; }
     mark.earlier { background: #ffd43b40; color: inherit;
                    text-decoration: underline dotted; text-underline-offset: .2em; }
+    /* A Game Term marker, shown as the term's Official name. */
+    .term { font-weight: 600; }
     .review-notes .advice { white-space: pre-wrap; }
     .badge { display: inline-block; padding: 0 .6rem; border-radius: 1rem;
              color: #fff; background: var(--bad); font-size: .9em; }
@@ -49,6 +52,7 @@
     {% if not user.needs_setup %}<a href="{{ console_root(request) }}admin/guides">攻略</a>{% endif %}
     {% if user.can("manage_game") and not user.needs_setup %}
     <a href="{{ console_root(request) }}admin/heroes">英雄</a>
+    <a href="{{ console_root(request) }}admin/terms">游戏术语</a>
     <a href="{{ console_root(request) }}admin/patches">版本</a>
     {% endif %}
     {% if user.can("manage_trash") and not user.needs_setup %}

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 -- A Game Term's slug is set only for Heroes (NULLs never clash in UNIQUE).
+-- nicknames, one per line, were added in T07 (see ADDED_COLUMNS).
 CREATE TABLE IF NOT EXISTS game_terms (
     id      INTEGER PRIMARY KEY,
     kind    TEXT NOT NULL CHECK (kind IN ('hero', 'item', 'skill', 'enchantment',
@@ -146,6 +147,7 @@ ADDED_COLUMNS = [
     ("guides", "trashed_at", "TEXT"),
     ("guides", "restored_at", "TEXT"),
     ("review_rounds", "revision_id", "INTEGER"),
+    ("game_terms", "nicknames", "TEXT NOT NULL DEFAULT ''"),
 ]
 
 # Indexes on added columns, made once the columns are sure to exist.

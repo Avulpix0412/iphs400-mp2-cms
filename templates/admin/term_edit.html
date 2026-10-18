@@ -1,0 +1,18 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>编辑{{ term.kind_label }}：{{ term.name_zh }}（{{ term.name_en }}）</h1>
+  <form method="post" action="{{ console_root(request) }}admin/terms/{{ term.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>官方中文名
+      <input type="text" name="name_zh" value="{{ name_zh }}" required>
+    </label>
+    <label>官方英文名
+      <input type="text" name="name_en" value="{{ name_en }}" required>
+    </label>
+    <label>外号（可选，用 、 或 | 分隔）
+      <input type="text" name="nicknames" value="{{ nicknames }}">
+    </label>
+    <button type="submit">保存</button>
+    <a href="{{ console_root(request) }}admin/terms">取消</a>
+  </form>
+{% endblock %}

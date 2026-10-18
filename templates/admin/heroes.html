@@ -3,13 +3,13 @@
   <h1>英雄</h1>
   <p>英雄名称必须使用游戏内的官方中文名和官方英文名。网址名在添加时由英文名生成，之后不再改变。</p>
   <table>
-    <thead><tr><th>官方中文名</th><th>官方英文名</th><th>网址名</th><th></th></tr></thead>
+    <thead><tr><th>官方中文名</th><th>官方英文名</th><th>网址名</th><th>外号</th><th></th></tr></thead>
     <tbody>
     {% for hero in heroes %}
-      <tr><td>{{ hero.name_zh }}</td><td>{{ hero.name_en }}</td><td><code>{{ hero.slug }}</code></td>
+      <tr><td>{{ hero.name_zh }}</td><td>{{ hero.name_en }}</td><td><code>{{ hero.slug }}</code></td><td>{{ hero.nicknames|join("、") }}</td>
         <td><a href="{{ console_root(request) }}admin/heroes/{{ hero.id }}/edit">编辑</a></td></tr>
     {% else %}
-      <tr><td colspan="4">还没有英雄。</td></tr>
+      <tr><td colspan="5">还没有英雄。</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -22,6 +22,9 @@
     </label>
     <label>官方英文名
       <input type="text" name="name_en" value="{{ name_en }}" required>
+    </label>
+    <label>外号（可选，用 、 或 | 分隔）
+      <input type="text" name="nicknames" value="{{ nicknames }}">
     </label>
     <button type="submit">添加英雄</button>
   </form>
