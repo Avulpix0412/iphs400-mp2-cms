@@ -4,6 +4,10 @@ body { font: 16px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
        margin: 0 auto; max-width: 42rem; padding: 1rem; }
 header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
 header .brand { font-weight: 700; text-decoration: none; margin-inline-end: auto; }
+.site-nav { display: flex; flex-wrap: wrap; gap: .25rem 1rem; flex-basis: 100%; }
 main { margin-block: 2rem; }
+.badge { display: inline-block; padding: 0 .5rem; border-radius: 1rem;
+         border: 1px solid; font-size: .85em; }
+.term { font-weight: 600; }
 .fallback-notice { display: none; }
 .fallback-notice:target { display: block; }
