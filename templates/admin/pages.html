@@ -13,7 +13,7 @@
         <td><code>{{ page.slug }}</code></td>
         <td>{{ page.status_label }}</td>
         <td>{{ "有" if page.has_text_in("en") else "无" }}</td>
-        <td>{{ page.updated_at[:16] }}</td>
+        <td>{{ page.updated_at|beijing_time }}</td>
       </tr>
     {% else %}
       <tr><td colspan="5">还没有页面。</td></tr>

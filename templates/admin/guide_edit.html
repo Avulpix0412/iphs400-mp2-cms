@@ -5,7 +5,7 @@
   {% if guide %}
   <p>状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
     · 网址名：<code>{{ guide.slug }}</code>
-    · 更新于 {{ guide.updated_at }}</p>
+    · 更新于 {{ guide.updated_at|beijing_time }}</p>
   <p><a href="{{ console_root(request) }}{{ path }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）
     {% if can_review %}· <a href="{{ console_root(request) }}{{ path }}/review">{{ "审核（发布或退回）" if guide.status == "submitted" else "撤下…" }}</a>{% endif %}
     · <a href="{{ console_root(request) }}{{ path }}/delete">删除…</a></p>

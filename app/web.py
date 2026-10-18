@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import FormData
 
-from app import accounts, db, settings
+from app import accounts, db, settings, times
 
 SESSION_COOKIE = "cms_session"
 SESSION_MAX_AGE = 12 * 60 * 60  # seconds; sign in again after half a day
@@ -96,6 +96,7 @@ def console_root(request: Request) -> str:
     return "../" * (path.count("/") - 1)
 
 
+templates.env.filters.update(times.FILTERS)
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["pop_flashes"] = pop_flashes
 templates.env.globals["console_root"] = console_root

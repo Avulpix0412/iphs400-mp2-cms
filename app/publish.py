@@ -25,7 +25,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import content, db, game, guides, settings
+from app import content, db, game, guides, settings, times
 from app.rendering import render_markdown
 
 CSS = """/* Minimal starter styles — make them yours. */
@@ -76,6 +76,7 @@ def environment(glossary: game.Glossary) -> Environment:
     env.filters["localized"] = lambda item, field, lang: getattr(item, f"{field}_{lang}")
     # `text|markdown(lang)`: sanitized HTML, with Game Terms in `lang`.
     env.filters["markdown"] = lambda text, lang: render_markdown(text, lang, glossary).html
+    env.filters.update(times.FILTERS)
     return env
 
 

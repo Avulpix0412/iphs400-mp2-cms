@@ -205,6 +205,15 @@ Regenerating the public site from everything that is Published, and putting it
 online. This is the only step that changes what Readers see.
 _Avoid_: publish, deploy, export
 
+### Time
+
+**Beijing time** (北京时间):
+UTC+8, the clock the Admins, Editors and most Readers live by. Every time
+the console or the site shows is in Beijing time, to the minute
+(`2026-10-17 21:05`), or as a Beijing date on the site. Times are stored in
+UTC and compared as stored; only what is shown is converted.
+_Avoid_: local time, server time
+
 ## Flagged ambiguities
 
 - "Draft" was being used for both an unfinished Guide and a finished one

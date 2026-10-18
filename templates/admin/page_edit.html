@@ -3,7 +3,7 @@
 {% block content %}
   <h1>{{ title }}</h1>
   {% if page %}
-  <p>状态：{{ page.status_label }} · 网址名：<code>{{ page.slug }}</code> · 更新于 {{ page.updated_at }}</p>
+  <p>状态：{{ page.status_label }} · 网址名：<code>{{ page.slug }}</code> · 更新于 {{ page.updated_at|beijing_time }}</p>
   <p><a href="{{ console_root(request) }}{{ path }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）
     · <a href="{{ console_root(request) }}{{ path }}/delete">删除…</a></p>
   {% if page.status == "published" %}

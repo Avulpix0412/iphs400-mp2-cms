@@ -6,7 +6,7 @@
     <li>
       <a href="{{ link("guides/" ~ guide.slug ~ "/") }}">{{ guide|localized("title", lang) }}</a>
       <small>{{ guide|localized("hero_name", lang) }} · {{ guide.patch_name }}
-        · {{ guide.author_name }} · {{ guide.updated_at[:10] }}</small>
+        · {{ guide.author_name }} · {{ guide.updated_at|beijing_date }}</small>
     </li>
     {% endfor %}
   </ul>

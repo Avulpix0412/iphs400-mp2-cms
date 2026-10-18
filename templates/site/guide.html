@@ -7,7 +7,7 @@
       <a href="{{ link("heroes/" ~ guide.hero_slug ~ "/") }}">{{ guide|localized("hero_name", lang) }}</a>
       · {{ guide.patch_name }}
       · <a href="{{ link("authors/" ~ guide.author_id ~ "/") }}">{{ guide.author_name }}</a>
-      · {{ t.updated }} {{ guide.updated_at[:10] }}
+      · {{ t.updated }} {{ guide.updated_at|beijing_date }}
     </p>
     {{ guide|localized("body", lang)|markdown(lang)|safe }}
   </article>

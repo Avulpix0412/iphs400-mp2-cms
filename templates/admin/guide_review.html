@@ -5,7 +5,7 @@
     · 状态：{{ guide.status_label }} · 作者：{{ guide.author_name }}
     · {{ guide.hero_name_zh }} · {{ guide.patch_name }}</p>
   {% if guide.is_revision and guide.guide_changed_since %}
-  <p class="flash flash-error">在这份修订打开之后，攻略又被修改过（更新于 {{ guide.guide.updated_at[:16] }}）。发布这份修订会用它的内容替换攻略现在的全部内容，那些修改会丢失。</p>
+  <p class="flash flash-error">在这份修订打开之后，攻略又被修改过（更新于 {{ guide.guide.updated_at|beijing_time }}）。发布这份修订会用它的内容替换攻略现在的全部内容，那些修改会丢失。</p>
   {% endif %}
 
   <article lang="zh-CN">
