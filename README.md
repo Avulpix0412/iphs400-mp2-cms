@@ -23,14 +23,16 @@ git clone https://github.com/Avulpix0412/iphs400-mp2-cms.git
 cd iphs400-mp2-cms
 uv sync
 cp .env.example .env    # then change the passwords and the secret key
-uv run --env-file .env python scripts/seed_demo.py
-uv run --env-file .env cms serve    # then open http://localhost:8000/login
+uv run python scripts/seed_demo.py
+uv run cms serve    # then open http://localhost:8000/login
 ```
 
-Keep `--env-file .env` on every command: the app and the seed script read their
-settings from the environment and do not load `.env` themselves. Quote any value
-that contains spaces. uv rejects the whole file if one line does not parse, and
-the seed script then reports the passwords as missing.
+Run these from the repository root: the `cms` command and the seed script load
+`.env` from the folder you run them in. A variable already set in your shell
+wins over the same key in `.env`, and `uv run --env-file .env …` still works.
+The loader skips blank lines, `#` comments and a leading `export `, strips the
+quotes around a quoted value, and warns about (and skips) any line that is not
+`KEY=value`.
 
 The seed script creates `admin@example.test` (Admin, 演示管理员) and
 `editor@example.test` (Editor, 演示编辑), with the passwords you set in `.env` as
@@ -42,7 +44,7 @@ page and two Tournament items. Running it again leaves existing records unchange
 To build the public site from what is published:
 
 ```bash
-uv run --env-file .env cms publish    # writes site/; it prints a preview command
+uv run cms publish    # writes site/; it prints a preview command
 ```
 
 ## Generative AI Use Statement

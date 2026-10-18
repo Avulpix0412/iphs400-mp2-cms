@@ -18,7 +18,7 @@ from app.web import templates
 def create_app() -> FastAPI:
     app = FastAPI(title="IPHS 400 MP2 CMS",
                   dependencies=[Depends(web.verify_csrf)])
-    app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY,
+    app.add_middleware(SessionMiddleware, secret_key=settings.secret_key(),
                        session_cookie=web.SESSION_COOKIE,
                        max_age=web.SESSION_MAX_AGE, same_site="lax")
     app.add_exception_handler(web.LoginRequired, web.login_required_handler)
@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
     def public_home(request: Request):
         return templates.TemplateResponse(
             request, "public/home.html",
-            {"title": settings.SITE_TITLE, "items": []},
+            {"title": settings.site_title(), "items": []},
         )
 
     app.include_router(auth.router)

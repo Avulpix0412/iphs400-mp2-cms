@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 
-from app import publish, settings
+from app import envfile, publish, settings
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,6 +21,7 @@ def main(argv: list[str] | None = None) -> int:
     deploy = sub.add_parser("deploy", help="push site/ to gh-pages")
     deploy.add_argument("--message", default="Publish site")
     args = parser.parse_args(argv)
+    envfile.load()
 
     if args.command == "serve":
         import uvicorn

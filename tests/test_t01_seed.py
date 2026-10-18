@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -14,11 +15,16 @@ from conftest import DEMO_USERS, login
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_seed(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def run_seed(env: dict[str, str],
+             cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run the seed script from `cwd`, by default an empty temporary folder, so
+    it never loads the developer's real .env from the repo root."""
     clean = {k: v for k, v in os.environ.items()
              if k not in ("CMS_ADMIN_PASSWORD", "CMS_EDITOR_PASSWORD")}
-    return subprocess.run([sys.executable, "scripts/seed_demo.py"], cwd=ROOT,
-                          env=clean | env, capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as empty:
+        return subprocess.run([sys.executable, str(ROOT / "scripts/seed_demo.py")],
+                              cwd=cwd or empty, env=clean | env,
+                              capture_output=True, text=True)
 
 
 def test_seed_refuses_to_run_without_both_passwords(tmp_path, monkeypatch):
