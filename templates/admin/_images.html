@@ -1,0 +1,52 @@
+{# The image section of an editor form (a Guide's, a Revision's or a
+   Tournament item's). It sits inside that form, so each of its buttons saves
+   the rest of the form too. `path` is the owner's console path, `images` its
+   images, `cover` its cover now, and `no_cover` whether it may have none. #}
+    <fieldset class="images">
+      <legend>图片</legend>
+      {% if not saved %}
+      <p>保存草稿后就可以上传图片。</p>
+      {% else %}
+      <p>每张图片都可以同时用在中文版和英文版里：把它的代码放进正文就行。说明（alt）会在图片显示不出来、或读者用读屏软件时代替图片，按语言分别填写。</p>
+      {% for image in images %}
+      {% set alt_zh, alt_en = fields.images.alts.get(image.id, (image.alt_zh, image.alt_en)) %}
+      <div class="image">
+        <img src="{{ console_root(request) }}{{ path }}/images/{{ image.filename }}" alt="{{ alt_zh }}">
+        <div>
+          <p><code>![]({{ image.filename }})</code>
+            <button type="button" class="insert" data-target="body_zh" data-snippet="![]({{ image.filename }})" hidden>插入中文正文</button>
+            <button type="button" class="insert" data-target="body_en" data-snippet="![]({{ image.filename }})" hidden>插入英文正文</button></p>
+          <label>中文说明（可选）
+            <input type="text" name="alt_zh_{{ image.id }}" value="{{ alt_zh }}">
+          </label>
+          <label>英文说明（可选）
+            <input type="text" name="alt_en_{{ image.id }}" value="{{ alt_en }}">
+          </label>
+          <label><input type="radio" name="cover" value="{{ image.filename }}"{% if cover and cover.id == image.id %} checked{% endif %}> 用作封面</label>
+          <button type="submit" formaction="{{ console_root(request) }}{{ path }}/images/{{ image.id }}/delete">删除这张图片</button>
+        </div>
+      </div>
+      {% endfor %}
+      {% if images and no_cover %}
+      <label><input type="radio" name="cover" value=""{% if not cover %} checked{% endif %}> 不用封面</label>
+      {% endif %}
+      {% if images %}<p>封面会显示在网站的列表里{% if not no_cover %}，没选的话用第一张{% endif %}。</p>
+      <button type="submit">保存说明和封面</button>{% endif %}
+      <label>上传图片（{{ allowed_images }}，每张最大 5 MB）
+        <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif">
+      </label>
+      <button type="submit" formaction="{{ console_root(request) }}{{ path }}/images" formenctype="multipart/form-data">上传</button>
+      <script>
+        // Without this script, the writer copies an image's code by hand.
+        document.querySelectorAll("button.insert").forEach((button) => {
+          button.hidden = false;
+          button.addEventListener("click", () => {
+            const body = button.form.elements[button.dataset.target];
+            body.setRangeText(button.dataset.snippet, body.selectionStart,
+                              body.selectionEnd, "end");
+            body.focus();
+          });
+        });
+      </script>
+      {% endif %}
+    </fieldset>

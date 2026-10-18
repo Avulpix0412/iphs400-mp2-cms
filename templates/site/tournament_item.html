@@ -8,6 +8,6 @@
     {% if announcement %}
     <p class="follows">{{ t.follows }}<a href="{{ link("tournaments/" ~ announcement.id ~ "/") }}">{{ announcement|localized("title", lang) }}</a></p>
     {% endif %}
-    {{ item|localized("body", lang)|markdown(lang)|safe }}
+    {{ item|localized("body", lang)|markdown(lang, images(item))|safe }}
   </article>
 {% endblock %}

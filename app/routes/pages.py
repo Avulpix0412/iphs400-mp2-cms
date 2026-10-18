@@ -162,13 +162,16 @@ def delete_page(request: Request, user: Annotated[User, Depends(page_manager)],
 
 
 def preview_page(request: Request, user: User, item: TextBearing, *, kind: str,
-                 meta: dict[str, str] | None = None):
+                 meta: dict[str, str] | None = None,
+                 images: dict[str, dict[str, tuple[str, str]]] | None = None):
     """A Page or Tournament item as Readers will see it, with warnings about
     its Game Term markers and nicknames. `meta` is the line under each
-    language's title, by language."""
+    language's title, and `images` what its text needs to show its images
+    (see media.sources), by language."""
     with db.connect() as conn:
         glossary = game.glossary(conn)
-    rendered = {lang: render_markdown(getattr(item, f"body_{lang}"), lang, glossary)
+    rendered = {lang: render_markdown(getattr(item, f"body_{lang}"), lang, glossary,
+                                      (images or {}).get(lang))
                 for lang in ("zh", "en")}
     term_warnings = preview_warnings(item.title_zh, item.title_en, rendered["zh"],
                                      rendered["en"], glossary)

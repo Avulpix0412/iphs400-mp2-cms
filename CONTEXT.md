@@ -85,6 +85,25 @@ title and body. Chinese is required. English is optional, and content without
 it does not appear on the English site.
 _Avoid_: translation, localization, body
 
+**Image** (图片):
+A screenshot (PNG, JPG, WebP or GIF, at most 5 MB) uploaded into one Guide or
+Tournament item. It belongs to that item, can be used in both its Chinese
+text and its English text, and is deleted with it. A Revision has its own copy
+of its Guide's images.
+_Avoid_: attachment, picture, file (in code, the media folder is just where
+Images' files are stored)
+
+**Alt text** (图片说明):
+An Image's optional short description, one per language, shown in place of
+the Image to Readers whose screen reader reads it or whose image fails to
+load.
+_Avoid_: caption, description, title
+
+**Cover** (封面):
+The Image shown with an item in the site's lists. A Guide's is its first Image
+unless the writer chooses another; a Tournament item may also have none.
+_Avoid_: featured image, banner
+
 ### The game
 
 **Game Term** (游戏术语):

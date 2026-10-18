@@ -8,6 +8,8 @@ vanessa-12/`). Two rules the rubric checks:
   2. Every href and src is RELATIVE ("../../style.css"), never root-absolute
      ("/style.css"), because Pages serves this from a subfolder.
 
+The images of what is written are copied into media/, which both trees share.
+
 A Site build (the console's 更新网站 button) is render_site() followed by
 deploy(), which pushes site/ to the gh-pages branch. Only a build whose deploy
 succeeded is recorded, and the dashboard counts the changes since then.
@@ -25,7 +27,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import content, db, game, guides, settings, times
+from app import content, db, game, guides, media, settings, times
 from app.rendering import render_markdown
 
 CSS = """/* Minimal starter styles — make them yours. */
@@ -39,6 +41,11 @@ main { margin-block: 2rem; }
 .badge { display: inline-block; padding: 0 .5rem; border-radius: 1rem;
          border: 1px solid; font-size: .85em; }
 .term { font-weight: 600; }
+img { max-width: 100%; height: auto; }
+/* A Cover in a list: a small image above the item's title. */
+.guides, .tournament-items { list-style: none; padding: 0; }
+.guides li, .tournament-items li { margin-block: .75rem; }
+.guides img, .tournament-items img { display: block; width: 12rem; }
 .fallback-notice { display: none; }
 .fallback-notice:target { display: block; }
 """
@@ -74,8 +81,10 @@ def environment(glossary: game.Glossary) -> Environment:
     )
     # `guide|localized("title", lang)` is guide.title_zh or guide.title_en.
     env.filters["localized"] = lambda item, field, lang: getattr(item, f"{field}_{lang}")
-    # `text|markdown(lang)`: sanitized HTML, with Game Terms in `lang`.
-    env.filters["markdown"] = lambda text, lang: render_markdown(text, lang, glossary).html
+    # `text|markdown(lang, images(item))`: sanitized HTML, with Game Terms in
+    # `lang` and the item's images.
+    env.filters["markdown"] = lambda text, lang, images=None: render_markdown(
+        text, lang, glossary, images).html
     env.filters.update(times.FILTERS)
     return env
 
@@ -104,11 +113,15 @@ class _Writer:
     `link(path inside the tree)`. A page in a language tree also gets
     `switch_link`, the language switch: the same page in the `other` tree
     unless `switch_to` names another path inside that tree, and `nav_pages`,
-    the Published Pages in the navigation of that tree."""
+    the Published Pages in the navigation of that tree. `images(item)` is
+    what the item's text needs to show its images there, and `cover(item)`
+    is its cover, with `media_link(image)` leading to an image's file."""
 
     def __init__(self, out: Path, current_patch: str | None,
-                 glossary: game.Glossary, nav_pages: list[content.Page]) -> None:
+                 glossary: game.Glossary, nav_pages: list[content.Page],
+                 images: dict[str, list[media.Image]]) -> None:
         self.out = out
+        self.images = images  # by owner
         self.env = environment(glossary)
         self.current_patch = current_patch
         self.nav_pages = {lang: [page for page in nav_pages if page.has_text_in(lang)]
@@ -121,7 +134,15 @@ class _Writer:
         def site_link(target: str) -> str:
             return relative(target, path)
 
+        def owned(item: guides.Guide | content.TournamentItem) -> list[media.Image]:
+            return self.images.get(item.media_owner, [])
+
+        context |= {
+            "media_link": lambda image: site_link(f"media/{image.filename}"),
+            "cover": lambda item: media.cover(owned(item), item.cover)}
         if lang:
+            context["images"] = lambda item: media.sources(
+                owned(item), lang, site_link("media/{}"))
             other = "en" if lang == "zh" else "zh"
             same_page = path.removeprefix(f"{lang}/")
             context |= {"lang": lang, "other": other, "t": LABELS[lang],
@@ -146,12 +167,15 @@ def render_site(out: Path | None = None) -> Path:
         glossary = game.glossary(conn)
         pages = content.published_pages(conn)
         tournament_items = content.published_tournament_items(conn)
+        owners = [item.media_owner for item in [*published, *tournament_items]]
+        images = {owner: media.images(conn, owner) for owner in owners}
+    media.copy_files(itertools.chain(*images.values()), out / "media")
     (out / "style.css").write_text(CSS)
     # Every Author with a Published Guide gets a page in both trees, even if
     # none of their Guides has English text.
     authors = {guide.author_id: guide.author_name for guide in published}
     write = _Writer(out, current_patch=patches[0].name if patches else None,
-                    glossary=glossary, nav_pages=pages)
+                    glossary=glossary, nav_pages=pages, images=images)
     write.page("", "site/root.html")
     for lang in LANGUAGES:
         listed = [guide for guide in published if guide.has_text_in(lang)]

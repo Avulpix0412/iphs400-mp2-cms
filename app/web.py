@@ -8,16 +8,19 @@ table, never by the cookie alone.
 """
 from __future__ import annotations
 
+import re
 import secrets
 from collections.abc import Callable
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi import Depends, HTTPException, Request
+from fastapi.responses import (FileResponse, HTMLResponse, PlainTextResponse,
+                               RedirectResponse)
 from fastapi.templating import Jinja2Templates
-from starlette.datastructures import FormData
+from starlette.datastructures import FormData, UploadFile
 
-from app import accounts, db, settings, times
+from app import accounts, db, media, settings, times
 
 SESSION_COOKIE = "cms_session"
 SESSION_MAX_AGE = 12 * 60 * 60  # seconds; sign in again after half a day
@@ -63,6 +66,45 @@ def form_text(form: FormData, name: str) -> str:
     return value if isinstance(value, str) else ""
 
 
+_ALT = re.compile(r"alt_(zh|en)_(\d+)")
+
+
+def image_fields(form: FormData) -> media.ImageFields:
+    """The image section of an editor form: each image's alt text fields
+    (alt_zh_<id>, alt_en_<id>) and the cover radio buttons."""
+    alts: dict[int, dict[str, str]] = {}
+    for name, value in form.multi_items():
+        match = _ALT.fullmatch(name)
+        image_id = id_or_none(match.group(2)) if match else None
+        if match and image_id is not None and isinstance(value, str):
+            alts.setdefault(image_id, {})[match.group(1)] = value
+    cover = form.get("cover")
+    return media.ImageFields(
+        alts={image_id: (texts.get("zh", ""), texts.get("en", ""))
+              for image_id, texts in alts.items()},
+        cover=cover if isinstance(cover, str) else None)
+
+
+async def sent_image(request: Request) -> media.Upload:
+    """The file chosen in an editor form's image section, as much of it as
+    is needed to tell that it is too large. (Starlette has already received
+    the whole request; the console runs on one machine, so nothing limits
+    that yet.)"""
+    value = (await request.form()).get("image")
+    if not isinstance(value, UploadFile):
+        return media.Upload("", b"")
+    return media.Upload(value.filename or "", await value.read(media.MAX_BYTES + 1))
+
+
+def image_response(path: Path | None) -> FileResponse:
+    """An uploaded image for the console, or 404. Browsers are told not to
+    guess another type from its content."""
+    if path is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(path, media_type=media.content_type(path.name),
+                        headers={"X-Content-Type-Options": "nosniff"})
+
+
 _LARGEST_ID = 2 ** 63 - 1  # SQLite's largest integer
 
 
@@ -102,6 +144,7 @@ templates.env.globals["pop_flashes"] = pop_flashes
 templates.env.globals["console_root"] = console_root
 templates.env.globals["submission_banned"] = accounts.SUBMISSION_BANNED
 templates.env.globals["min_password_length"] = accounts.MIN_PASSWORD_LENGTH
+templates.env.globals["allowed_images"] = media.ALLOWED
 
 
 def start_session(request: Request, session_id: str) -> None:
