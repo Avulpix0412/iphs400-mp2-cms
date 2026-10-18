@@ -14,7 +14,7 @@
         <td>{{ roles[account.role] }}</td>
         <td>{{ states[account.state] }}{% if account.needs_setup %}（待首次登录设置）{% endif %}</td>
         <td>已发布 {{ guide_counts.published }} · 共 {{ guide_counts.total }}</td>
-        <td>{{ account.last_login_at[:16] if account.last_login_at else "从未登录" }}</td>
+        <td>{{ account.last_login_at|beijing_time if account.last_login_at else "从未登录" }}</td>
       </tr>
     {% endfor %}
     </tbody>

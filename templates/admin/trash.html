@@ -2,15 +2,16 @@
 {% block content %}
   <h1>回收站</h1>
   <p>被删除的攻略在这里，只有管理员能看到，也不会出现在公开网站上。恢复后，攻略会原样回到作者手里。</p>
+  <div class="scroll">
   <table>
     <thead><tr><th>标题</th><th>作者</th><th>状态</th><th>删除于</th><th></th></tr></thead>
     <tbody>
     {% for guide in guides %}
       <tr>
-        <td>{{ guide.title_zh or "（无标题）" }}</td>
+        <td class="wrap">{{ guide.title_zh or "（无标题）" }}</td>
         <td>{{ guide.author_name }}</td>
         <td>{{ guide.status_label }}</td>
-        <td>{{ guide.trashed_at[:16] }}</td>
+        <td>{{ guide.trashed_at|beijing_time }}</td>
         <td>
           <form method="post" action="{{ console_root(request) }}admin/trash/{{ guide.id }}/restore">
             <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -24,4 +25,5 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 {% endblock %}

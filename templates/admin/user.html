@@ -7,7 +7,7 @@
     <dt>角色</dt><dd>{{ roles[account.role] }}</dd>
     <dt>状态</dt><dd>{{ states[account.state] }}{% if account.needs_setup %}（待首次登录设置）{% endif %}</dd>
     <dt>攻略</dt><dd>已发布 {{ guide_counts.published }} · 共 {{ guide_counts.total }}</dd>
-    <dt>上次登录</dt><dd>{{ account.last_login_at[:16] if account.last_login_at else "从未登录" }}</dd>
+    <dt>上次登录</dt><dd>{{ account.last_login_at|beijing_time if account.last_login_at else "从未登录" }}</dd>
   </dl>
 
   <h2>角色</h2>

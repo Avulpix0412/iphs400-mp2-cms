@@ -105,7 +105,8 @@ def updated_at(c: TestClient, edit_page: str) -> str:
 def test_publishing_a_revision_replaces_the_guides_content_and_keeps_its_url(
         editor, admin, site):
     edit_page = published_guide(editor, admin, title_zh="旧标题", body_zh="旧的正文。")
-    slug, before = slug_of(admin, edit_page), updated_at(admin, edit_page)
+    slug = slug_of(admin, edit_page)
+    new_guide(editor, title_zh="后写的攻略")  # updated after the Guide, until it is revised
     open_revision(editor, edit_page)
     revision = revision_page(edit_page)
     save(editor, revision, title_zh="新标题", body_zh="新的正文。",
@@ -122,7 +123,8 @@ def test_publishing_a_revision_replaces_the_guides_content_and_keeps_its_url(
     assert status_of(admin, edit_page) == "已发布"
     assert slug_of(admin, edit_page) == slug
     after = updated_at(admin, edit_page)
-    assert after > before
+    listing = admin.get("/admin/guides").text  # most recently updated first
+    assert listing.index("新标题") < listing.index("后写的攻略")
 
     render_site(site)
     zh = page(site, f"zh/guides/{slug}/")

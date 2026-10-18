@@ -16,20 +16,22 @@
   {% if user.can("publish_guides") %}
   <h2>待审核 <span class="badge">{{ queue | length }}</span></h2>
   {% if queue %}
+  <div class="scroll">
   <table>
     <thead><tr><th>标题</th><th>作者</th><th>英雄</th><th>版本</th><th>更新于</th></tr></thead>
     <tbody>
     {% for guide in queue %}
       <tr>
-        <td><a href="{{ console_root(request) }}{{ guide.console_path }}/review">{{ guide.title_zh or "（无标题）" }}</a>{% if guide.is_revision %}（修订）{% endif %}</td>
+        <td class="wrap"><a href="{{ console_root(request) }}{{ guide.console_path }}/review">{{ guide.title_zh or "（无标题）" }}</a>{% if guide.is_revision %}（修订）{% endif %}</td>
         <td>{{ guide.author_name }}</td>
         <td>{{ guide.hero_name_zh }}</td>
         <td>{{ guide.patch_name }}</td>
-        <td>{{ guide.updated_at[:16] }}</td>
+        <td>{{ guide.updated_at|beijing_time }}</td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p>没有等待审核的攻略。</p>
   {% endif %}
