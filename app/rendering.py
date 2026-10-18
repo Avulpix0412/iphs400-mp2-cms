@@ -137,6 +137,18 @@ def title_warnings(title: str, lang: str, glossary: Glossary) -> list[str]:
         for nickname, term, count in glossary.nicknames_in(title)]
 
 
+def preview_warnings(title_zh: str, title_en: str, rendered_zh: Rendered,
+                     rendered_en: Rendered, glossary: Glossary) -> list[str]:
+    """Every warning the preview shows for a text in both languages (titles
+    and rendered bodies), each labelled with where it is."""
+    return [f"{where}：{warning}" for where, warnings in [
+                ("中文标题", title_warnings(title_zh, "zh", glossary)),
+                ("中文正文", rendered_zh.warnings),
+                ("英文标题", title_warnings(title_en, "en", glossary)),
+                ("英文正文", rendered_en.warnings)]
+            for warning in warnings]
+
+
 def _unmarked_text(html: str) -> str:
     """The text Readers see in `html` (the output of render_markdown), less
     Game Term markers and code, where a nickname may stand as written. Each

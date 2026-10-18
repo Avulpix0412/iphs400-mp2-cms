@@ -159,3 +159,32 @@ def test_game_term_pages_link_relatively_and_their_links_work(admin):
     preview = upload_csv(admin, CSV_HEADER + "物品,火药桶,Powder Keg,\n")
     assert preview.status_code == 200
     check_page(admin, "/admin/terms/import", preview.text)
+
+
+def test_page_and_tournament_pages_link_relatively_and_their_links_work(admin):
+    from test_t08_pages_tournaments import (new_page, new_tournament_item,
+                                            published_page, published_tournament_item)
+
+    draft = new_page(admin, slug="draft")
+    about = published_page(admin, slug="about")
+    announcement = published_tournament_item(admin)
+    recap = new_tournament_item(admin, kind="recap")
+    pages = ["/admin/pages", "/admin/pages/new", "/admin/tournaments",
+             "/admin/tournaments/new"]
+    for edit_page in [draft, about, announcement, recap]:
+        pages += [edit_page, edit_page.replace("/edit", "/preview"),
+                  edit_page.replace("/edit", "/delete")]
+    for page_url in pages:
+        response = admin.get(page_url)
+        assert response.status_code == 200, page_url
+        check_page(admin, page_url, response.text)
+
+
+def test_a_refused_page_form_reshown_at_its_post_url_still_links_correctly(admin):
+    from test_t08_pages_tournaments import new_page
+
+    about = new_page(admin, slug="about")
+    action = about.removesuffix("/edit")
+    response = submit(admin, about, action, slug="guides", title_zh="关于")
+    assert response.status_code == 400
+    check_page(admin, action, response.text)

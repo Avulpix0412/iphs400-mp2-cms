@@ -12,16 +12,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.datastructures import FormData
 
 from app import db, game, guides
-from app.rendering import highlight, render_markdown, title_warnings
+from app.rendering import highlight, preview_warnings, render_markdown
 from app.accounts import User
 from app.guides import Guide, GuideFields, ReviewNote, Revision
-from app.web import AdminRequired, flash, redirect, signed_in_user, templates
+from app.web import (AdminRequired, flash, form_text, id_or_none, redirect,
+                     signed_in_user, templates)
 
 router = APIRouter(dependencies=[Depends(signed_in_user)])
-
-
-def _id_or_none(value: str) -> int | None:
-    return int(value) if value.strip().isdigit() else None
 
 
 def _fields_from(form: FormData) -> GuideFields:
@@ -29,13 +26,12 @@ def _fields_from(form: FormData) -> GuideFields:
     gets our message rather than a 422; the slug stays None unless the form
     has a slug field (only Admins' does)."""
     def text(name: str) -> str:
-        value = form.get(name)
-        return value if isinstance(value, str) else ""
+        return form_text(form, name)
     slug = form.get("slug")
     return GuideFields(title_zh=text("title_zh"), body_zh=text("body_zh"),
                        title_en=text("title_en"), body_en=text("body_en"),
-                       hero_id=_id_or_none(text("hero_id")),
-                       patch_id=_id_or_none(text("patch_id")),
+                       hero_id=id_or_none(text("hero_id")),
+                       patch_id=id_or_none(text("patch_id")),
                        slug=slug if isinstance(slug, str) else None)
 
 
@@ -103,8 +99,8 @@ def guide_list(request: Request, user: Annotated[User, Depends(signed_in_user)],
                patch: str = "", lang: str = ""):
     filters = guides.GuideFilter(
         status=status if status in guides.STATUS_LABELS else "",
-        hero_id=_id_or_none(hero), author_id=_id_or_none(author),
-        patch_id=_id_or_none(patch),
+        hero_id=id_or_none(hero), author_id=id_or_none(author),
+        patch_id=id_or_none(patch),
         language=lang if lang in guides.LANGUAGE_LABELS else "")
     with db.connect() as conn:
         listed = guides.guides(conn, user, filters)
@@ -159,13 +155,8 @@ def preview_page(request: Request, user: User, item: Guide | Revision):
     rendered_en = render_markdown(item.body_en, "en", glossary)
     body_zh, found_zh = highlight(rendered_zh.html, latest, earlier)
     body_en, found_en = highlight(rendered_en.html, latest, earlier)
-    term_warnings = [
-        f"{where}：{warning}" for where, warnings in [
-            ("中文标题", title_warnings(item.title_zh, "zh", glossary)),
-            ("中文正文", rendered_zh.warnings),
-            ("英文标题", title_warnings(item.title_en, "en", glossary)),
-            ("英文正文", rendered_en.warnings)]
-        for warning in warnings]
+    term_warnings = preview_warnings(item.title_zh, item.title_en, rendered_zh,
+                                     rendered_en, glossary)
     return templates.TemplateResponse(
         request, "admin/guide_preview.html",
         {"title": f"预览：{item.title_zh or '（无标题）'}", "user": user,

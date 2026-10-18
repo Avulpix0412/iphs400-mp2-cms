@@ -7,15 +7,17 @@ Creates one Admin and one Editor, a few Heroes, a few Patches (the last
 one, 6.7, becomes the Current Patch), demo Game Terms imported from
 demo_game_terms.csv (which doubles as a sample file for the console's CSV
 import), and demo Guides in Draft, Submitted and Published, made through the
-Guide workflow just as the console makes them. The passwords come from
+Guide workflow just as the console makes them, plus a Published About
+Page and a Published Tournament announcement with its recap. The passwords
+come from
 CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD; there are no default passwords, so
 the script refuses to run without both. Running it again leaves existing
 accounts, Heroes, Patches and Game Terms alone (even ones an Admin has edited
-since), and adds no Guides once any exist.
+since), and adds no Guides, Pages or Tournament items once any of that kind
+exist.
 
 The rubric expects this to run clean on a fresh clone with .env.example values
-(item E4), because the database itself is never committed. Later tickets add
-a Page and Tournament items.
+(item E4), because the database itself is never committed.
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from app import accounts, db, game, guides, settings
+from app import accounts, content, db, game, guides, settings
 
 # Matches DEMO_USERS in tests/conftest.py (which uses its own fixed passwords).
 DEMO_USERS = [
@@ -61,6 +63,64 @@ DEMO_GUIDES = [
      "Mak potion build (6.7)",
      "## Final lineup\n\n[[马克]] stacks poison with potions and heals through the midgame."),
 ]
+
+# Slug, Chinese title and body, English title and body. Published.
+DEMO_PAGES = [
+    ("about", "关于",
+     "大巴扎攻略站由几位《大巴扎》主播维护，收录图文攻略，"
+     "方便大家按英雄和版本查找终局阵容。\n\n有问题请在 B 站私信我们。",
+     "About",
+     "The Bazaar Guides is run by a few streamers of The Bazaar. Guides are "
+     "written, so you can find a build by Hero and Patch."),
+]
+
+# Kind, Chinese title and body, English title and body, Tournament date,
+# Patch. Published; one Tournament's announcement, then its recap, which
+# links to it.
+DEMO_TOURNAMENT_ITEMS = [
+    ("announcement", "九月锦标赛预告",
+     "## 时间\n\n9 月 26 日（周六）晚上八点开始，版本 6.6。\n\n"
+     "本场热门英雄预计是 [[瓦妮莎]]。",
+     "September Tournament", "Saturday 26 September at 8pm, on Patch 6.6.",
+     "2026-09-26", "6.6"),
+    ("recap", "九月锦标赛回顾",
+     "冠军用 [[Mak]] 的药水流一路领先，决赛只剩三位玩家。",
+     "September Tournament recap",
+     "The champion led all the way with a [[马克]] potion build.",
+     "2026-09-26", "6.6"),
+]
+
+
+def seed_pages(conn: sqlite3.Connection) -> None:
+    admin = _seed_user(conn, "admin")
+    if content.pages(conn, admin):
+        print("pages: some already exist, none added.")
+        return
+    for slug, title_zh, body_zh, title_en, body_en in DEMO_PAGES:
+        page = content.create_page(conn, admin, content.PageFields(
+            slug=slug, title_zh=title_zh, body_zh=body_zh, title_en=title_en,
+            body_en=body_en))
+        content.publish_page(conn, admin, page.id)
+        print(f"page: created {title_zh} ({slug}, Published).")
+
+
+def seed_tournament_items(conn: sqlite3.Connection) -> None:
+    admin = _seed_user(conn, "admin")
+    if content.tournament_items(conn, admin):
+        print("tournament items: some already exist, none added.")
+        return
+    patches = {patch.name: patch.id for patch in game.patches(conn)}
+    announcement_id = None
+    for (kind, title_zh, body_zh, title_en, body_en, day,
+         patch) in DEMO_TOURNAMENT_ITEMS:
+        item = content.create_tournament_item(conn, admin, content.TournamentFields(
+            kind=kind, title_zh=title_zh, body_zh=body_zh, title_en=title_en,
+            body_en=body_en, tournament_date=day, patch_id=patches[patch],
+            announcement_id=announcement_id if kind == "recap" else None))
+        content.publish_tournament_item(conn, admin, item.id)
+        if kind == "announcement":
+            announcement_id = item.id
+        print(f"tournament item: created {title_zh} ({content.KIND_LABELS[kind]}).")
 
 
 def seed_guides(conn: sqlite3.Connection) -> None:
@@ -130,6 +190,8 @@ def main() -> int:
         print(f"game terms: {len(plan.added)} added, {plan.unchanged} already there,"
               f" {len(plan.rejected)} rejected.")
         seed_guides(conn)
+        seed_pages(conn)
+        seed_tournament_items(conn)
     print(f"Database: {settings.database_path()}")
     return 0
 

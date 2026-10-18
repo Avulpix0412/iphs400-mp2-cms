@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+{% set path = page.console_path if page else "admin/pages" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  {% if page %}
+  <p>状态：{{ page.status_label }} · 网址名：<code>{{ page.slug }}</code> · 更新于 {{ page.updated_at }}</p>
+  <p><a href="{{ console_root(request) }}{{ path }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）
+    · <a href="{{ console_root(request) }}{{ path }}/delete">删除…</a></p>
+  {% if page.status == "published" %}
+  <form method="post" action="{{ console_root(request) }}{{ path }}/unpublish">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <p>已发布。“更新网站”后它会出现在公开网站的导航里。 <button type="submit">撤下</button></p>
+  </form>
+  {% endif %}
+  {% endif %}
+
+  <form method="post" action="{{ console_root(request) }}{{ path }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>网址名（公开网址 zh/网址名/，只能用小写英文字母、数字和连字符{% if page %}；改动后旧链接会失效{% endif %}）
+      <input type="text" name="slug" value="{{ fields.slug }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*">
+    </label>
+    <fieldset>
+      <legend>中文版（发布前必须填写）</legend>
+      <label>标题（也是导航里显示的名字）
+        <input type="text" name="title_zh" value="{{ fields.title_zh }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_zh" rows="16">{{ fields.body_zh }}</textarea>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>英文版（可选；没有英文版的页面不会出现在英文网站上）</legend>
+      <label>标题
+        <input type="text" name="title_en" value="{{ fields.title_en }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_en" rows="16">{{ fields.body_en }}</textarea>
+      </label>
+    </fieldset>
+
+    <button type="submit">{{ "保存草稿" if not page or page.status == "draft" else "保存" }}</button>
+    {% if page and page.status == "draft" %}
+    <button type="submit" formaction="{{ console_root(request) }}{{ path }}/publish">发布</button>
+    {% endif %}
+  </form>
+{% endblock %}

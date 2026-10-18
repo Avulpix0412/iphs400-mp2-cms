@@ -15,6 +15,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import FormData
 
 from app import accounts, db, settings
 
@@ -53,6 +54,26 @@ async def verify_csrf(request: Request) -> None:
 async def csrf_rejected_handler(request: Request, exc: Exception) -> PlainTextResponse:
     return PlainTextResponse("请求已过期或来源不明，请返回刷新页面后重试。",
                              status_code=403)
+
+
+def form_text(form: FormData, name: str) -> str:
+    """A form field as text. A missing one (or a file) counts as blank, so it
+    gets the console's message rather than a 422."""
+    value = form.get(name)
+    return value if isinstance(value, str) else ""
+
+
+_LARGEST_ID = 2 ** 63 - 1  # SQLite's largest integer
+
+
+def id_or_none(value: str) -> int | None:
+    """A form's or query's id field as a number, or None if it holds anything
+    but ASCII digits or a number too large to be an id."""
+    value = value.strip()
+    if not (value.isascii() and value.isdigit()):
+        return None
+    number = int(value)
+    return number if number <= _LARGEST_ID else None
 
 
 def flash(request: Request, message: str, kind: str = "success") -> None:

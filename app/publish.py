@@ -25,7 +25,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import db, game, guides, settings
+from app import content, db, game, guides, settings
 from app.rendering import render_markdown
 
 CSS = """/* Minimal starter styles — make them yours. */
@@ -34,7 +34,10 @@ body { font: 16px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
        margin: 0 auto; max-width: 42rem; padding: 1rem; }
 header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
 header .brand { font-weight: 700; text-decoration: none; margin-inline-end: auto; }
+.site-nav { display: flex; flex-wrap: wrap; gap: .25rem 1rem; flex-basis: 100%; }
 main { margin-block: 2rem; }
+.badge { display: inline-block; padding: 0 .5rem; border-radius: 1rem;
+         border: 1px solid; font-size: .85em; }
 .term { font-weight: 600; }
 .fallback-notice { display: none; }
 .fallback-notice:target { display: block; }
@@ -46,11 +49,18 @@ LANGUAGES = ("zh", "en")
 LABELS = {
     "zh": {"site_name": "大巴扎攻略站", "current_patch": "当前版本：",
            "newest_guides": "最新攻略", "heroes": "英雄", "no_guides": "还没有攻略。",
-           "updated": "更新于",
+           "updated": "更新于", "guides": "攻略", "tournaments": "锦标赛",
+           "announcement": "预告", "recap": "回顾", "tournament_date": "比赛日期",
+           "no_tournament_items": "还没有锦标赛内容。", "follows": "对应的预告：",
            "other_language": "English"},
     "en": {"site_name": "The Bazaar Guides", "current_patch": "Current Patch: ",
            "newest_guides": "Newest guides", "heroes": "Heroes",
            "no_guides": "No English guides yet.", "updated": "Updated",
+           "guides": "Guides", "tournaments": "Tournaments",
+           "announcement": "Announcement", "recap": "Recap",
+           "tournament_date": "Tournament date",
+           "no_tournament_items": "No English tournament posts yet.",
+           "follows": "Announcement: ",
            "other_language": "中文"},
 }
 NEWEST_ON_HOME = 10
@@ -92,13 +102,16 @@ class _Writer:
     `site_link(path from the root)` and, inside a language tree, with
     `link(path inside the tree)`. A page in a language tree also gets
     `switch_link`, the language switch: the same page in the `other` tree
-    unless `switch_to` names another path inside that tree."""
+    unless `switch_to` names another path inside that tree, and `nav_pages`,
+    the Published Pages in the navigation of that tree."""
 
     def __init__(self, out: Path, current_patch: str | None,
-                 glossary: game.Glossary) -> None:
+                 glossary: game.Glossary, nav_pages: list[content.Page]) -> None:
         self.out = out
         self.env = environment(glossary)
         self.current_patch = current_patch
+        self.nav_pages = {lang: [page for page in nav_pages if page.has_text_in(lang)]
+                          for lang in LANGUAGES}
 
     def page(self, path: str, template: str, *, lang: str | None = None,
              switch_to: str | None = None, **context: Any) -> None:
@@ -112,7 +125,8 @@ class _Writer:
             same_page = path.removeprefix(f"{lang}/")
             context |= {"lang": lang, "other": other, "t": LABELS[lang],
                         "link": lambda target: site_link(f"{lang}/{target}"),
-                        "switch_link": site_link(f"{other}/{switch_to or same_page}")}
+                        "switch_link": site_link(f"{other}/{switch_to or same_page}"),
+                        "nav_pages": self.nav_pages[lang]}
         file = self.out / path / "index.html"
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(self.env.get_template(template).render(
@@ -129,19 +143,22 @@ def render_site(out: Path | None = None) -> Path:
         heroes = game.heroes(conn)
         patches = game.patches(conn)
         glossary = game.glossary(conn)
+        pages = content.published_pages(conn)
+        tournament_items = content.published_tournament_items(conn)
     (out / "style.css").write_text(CSS)
     # Every Author with a Published Guide gets a page in both trees, even if
     # none of their Guides has English text.
     authors = {guide.author_id: guide.author_name for guide in published}
     write = _Writer(out, current_patch=patches[0].name if patches else None,
-                    glossary=glossary)
+                    glossary=glossary, nav_pages=pages)
     write.page("", "site/root.html")
     for lang in LANGUAGES:
         listed = [guide for guide in published if guide.has_text_in(lang)]
         newest = sorted(listed, key=lambda guide: guide.published_at or "",
-                        reverse=True)[:NEWEST_ON_HOME]
-        write.page(f"{lang}/", "site/home.html", lang=lang, guides=newest,
-                   heroes=heroes)
+                        reverse=True)
+        write.page(f"{lang}/", "site/home.html", lang=lang,
+                   guides=newest[:NEWEST_ON_HOME], heroes=heroes)
+        write.page(f"{lang}/guides/", "site/guides.html", lang=lang, guides=newest)
         for hero in heroes:
             write.page(f"{lang}/heroes/{hero.slug}/", "site/hero.html", lang=lang,
                        hero=hero, patches=by_patch(
@@ -158,7 +175,31 @@ def render_site(out: Path | None = None) -> Path:
                        lang=lang, guide=guide,
                        switch_to=None if guide.has_text_in("en")
                        else f"heroes/{guide.hero_slug}/#{NO_ENGLISH_TEXT}")
+        write_tournaments(write, lang, tournament_items)
+        for page in pages:
+            # A Chinese-only Page's switch leads to the English home page.
+            if page.has_text_in(lang):
+                write.page(f"{lang}/{page.slug}/", "site/page.html", lang=lang,
+                           page=page, switch_to=None if page.has_text_in("en")
+                           else f"#{NO_ENGLISH_TEXT}")
     return out
+
+
+def write_tournaments(write: _Writer, lang: str,
+                      items: list[content.TournamentItem]) -> None:
+    """The 锦标赛 list and each item's page, in one language tree. A recap
+    links to its announcement where that is on the same tree; a Chinese-only
+    item's switch leads to the English list."""
+    listed = [item for item in items if item.has_text_in(lang)]
+    on_tree = {item.id: item for item in listed}
+    write.page(f"{lang}/tournaments/", "site/tournaments.html", lang=lang,
+               items=listed)
+    for item in listed:
+        write.page(f"{lang}/tournaments/{item.id}/", "site/tournament_item.html",
+                   lang=lang, item=item,
+                   announcement=on_tree.get(item.announcement_id or 0),
+                   switch_to=None if item.has_text_in("en")
+                   else f"tournaments/#{NO_ENGLISH_TEXT}")
 
 
 class DeployFailed(Exception):
@@ -193,11 +234,14 @@ def build_site() -> Path:
 
 
 def changes_not_on_site(conn: sqlite3.Connection) -> int:
-    """How many Guides changed since the last successful Site build started
-    (all of them, if there has never been one): Published Guides edited
-    since, Guides Unpublished since, which the next build leaves out, and
-    Published Guides moved to or restored from the Trash since."""
+    """How many Guides, Pages and Tournament items changed since the last
+    successful Site build started (all of them, if there has never been
+    one): Published Guides edited since, Guides Unpublished since, which the
+    next build leaves out, Published Guides moved to or restored from the
+    Trash since, and the Page and Tournament changes content.changes_since
+    counts."""
     last = conn.execute("SELECT MAX(started_at) FROM site_builds").fetchone()[0] or ""
     changed = {guide.id for guide in guides.published(conn) if guide.updated_at > last}
-    return len(changed | guides.unpublished_since(conn, last)
-               | guides.trash_changes_since(conn, last))
+    return (len(changed | guides.unpublished_since(conn, last)
+                | guides.trash_changes_since(conn, last))
+            + content.changes_since(conn, last))

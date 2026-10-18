@@ -57,7 +57,10 @@ _Avoid_: article, tutorial, post
 
 **Page** (页面):
 A standalone piece of site content written by an Admin, such as About (关于),
-that appears in the public navigation.
+that appears in the public navigation once Published, after 攻略 and 锦标赛, in
+the order Pages were added. Its address is an Admin-set ASCII Slug. Pages are
+never reviewed: a Page is a Draft or Published, and deleting one is for good
+(the Trash is for Guides only).
 _Avoid_: static page
 
 **Tournament announcement** (锦标赛预告):
@@ -66,8 +69,15 @@ _Avoid_: event, news, post
 
 **Tournament recap** (锦标赛回顾):
 An Admin-written account of a Tournament that has already happened. It is a
-separate item from that Tournament's announcement.
+separate item from that Tournament's announcement, which it may link to.
 _Avoid_: event, report, result
+
+**Tournament item** (锦标赛内容):
+A Tournament announcement or a Tournament recap. Each has the Tournament's
+date and Patch. Like Pages, they are never reviewed: each is a Draft or
+Published, and deleting one is for good. The 锦标赛 section lists them newest
+Tournament date first, badged 预告 or 回顾.
+_Avoid_: event, post, news
 
 **Chinese text / English text** (中文版 / 英文版):
 The two language versions of a Guide (or other content), each with its own
@@ -170,7 +180,8 @@ _Avoid_: approve, go live
 
 **Unpublish** (撤下):
 An Admin taking a Published Guide off the site without deleting it. The Guide
-goes back to its Author as a Draft, optionally with Review notes.
+goes back to its Author as a Draft, optionally with Review notes. An
+Unpublished Page or Tournament item simply becomes a Draft again.
 _Avoid_: hide, archive, take offline
 
 **Published** (已发布):

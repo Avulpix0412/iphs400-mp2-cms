@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>页面</h1>
+  <p>已发布的页面会按添加的先后，排在公开网站导航的“攻略”和“锦标赛”后面。页面不需要审核。</p>
+  <p><a href="{{ console_root(request) }}admin/pages/new">新建页面</a></p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>标题</th><th>网址名</th><th>状态</th><th>英文版</th><th>更新于</th></tr></thead>
+    <tbody>
+    {% for page in pages %}
+      <tr>
+        <td><a href="{{ console_root(request) }}{{ page.console_path }}/edit">{{ page.title_zh or "（无标题）" }}</a></td>
+        <td><code>{{ page.slug }}</code></td>
+        <td>{{ page.status_label }}</td>
+        <td>{{ "有" if page.has_text_in("en") else "无" }}</td>
+        <td>{{ page.updated_at[:16] }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">还没有页面。</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% endblock %}

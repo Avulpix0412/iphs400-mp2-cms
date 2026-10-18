@@ -1,0 +1,25 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>锦标赛</h1>
+  <p>锦标赛预告和回顾，按比赛日期从新到旧排列，和公开网站“锦标赛”栏目的顺序一致。它们不需要审核。</p>
+  <p><a href="{{ console_root(request) }}admin/tournaments/new">新建预告或回顾</a></p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>类型</th><th>标题</th><th>比赛日期</th><th>版本</th><th>状态</th><th>英文版</th></tr></thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{{ item.kind_label }}</td>
+        <td><a href="{{ console_root(request) }}{{ item.console_path }}/edit">{{ item.title_zh or "（无标题）" }}</a></td>
+        <td>{{ item.tournament_date }}</td>
+        <td>{{ item.patch_name }}</td>
+        <td>{{ item.status_label }}</td>
+        <td>{{ "有" if item.has_text_in("en") else "无" }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">还没有锦标赛内容。</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% endblock %}

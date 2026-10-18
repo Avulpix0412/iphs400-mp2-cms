@@ -1,0 +1,7 @@
+{% extends "site/base.html" %}
+{% from "site/_guides.html" import guide_list with context %}
+{% block title %}{{ t.guides }} · {{ t.site_name }}{% endblock %}
+{% block content %}
+  <h1>{{ t.guides }}</h1>
+  {{ guide_list(guides) }}
+{% endblock %}

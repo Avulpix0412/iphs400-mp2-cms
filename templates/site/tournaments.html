@@ -1,0 +1,18 @@
+{% extends "site/base.html" %}
+{% block title %}{{ t.tournaments }} · {{ t.site_name }}{% endblock %}
+{% block content %}
+  {% if lang == "en" %}
+  <p class="fallback-notice" id="no-english-text">The tournament post you came
+    from has no English text yet. Here are the English ones.</p>
+  {% endif %}
+  <h1>{{ t.tournaments }}</h1>
+  {% if not items %}<p>{{ t.no_tournament_items }}</p>{% else %}
+  <ul class="tournament-items">
+    {% for item in items %}
+    <li><span class="badge">{{ t[item.kind] }}</span>
+      <a href="{{ link("tournaments/" ~ item.id ~ "/") }}">{{ item|localized("title", lang) }}</a>
+      <small>{{ item.tournament_date }} · {{ item.patch_name }}</small></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endblock %}
