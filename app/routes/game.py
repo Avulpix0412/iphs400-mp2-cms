@@ -6,6 +6,7 @@ route's own `admin_user` is the same (cached) check, there to get the user.
 from __future__ import annotations
 
 import base64
+from collections.abc import Iterable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -15,6 +16,13 @@ from app.accounts import User
 from app.web import admin_user, flash, redirect, templates
 
 router = APIRouter(dependencies=[Depends(admin_user)])
+
+
+def flash_nickname_notices(request: Request, nicknames: Iterable[str]) -> None:
+    """After a save: point out one-character Chinese nicknames, which were
+    saved but will make the preview warn often."""
+    for notice in game.nickname_notices(nicknames):
+        flash(request, notice, "notice")
 
 
 def hero_list_page(request: Request, user: User, *, name_zh: str = "",
@@ -48,6 +56,7 @@ def add_hero(request: Request, user: Annotated[User, Depends(admin_user)],
         return hero_list_page(request, user, name_zh=name_zh, name_en=name_en,
                               nicknames=nicknames, error=refused.message)
     flash(request, f"已添加英雄：{hero.name_zh}（{hero.name_en}）。")
+    flash_nickname_notices(request, hero.nicknames)
     return redirect("/admin/heroes")
 
 
@@ -66,7 +75,7 @@ def hero_edit_page(request: Request, user: User, hero: game.Hero, *,
         request, "admin/hero_edit.html",
         {"title": f"编辑英雄：{hero.name_zh}", "user": user, "hero": hero,
          "name_zh": name_zh, "name_en": name_en, "nicknames": nicknames,
-         "error": error},
+         "notices": game.nickname_notices(hero.nicknames), "error": error},
         status_code=400 if error else 200)
 
 
@@ -92,6 +101,7 @@ def edit_hero(request: Request, user: Annotated[User, Depends(admin_user)],
                               name_en=name_en, nicknames=nicknames,
                               error=refused.message)
     flash(request, "已保存英雄的官方名称和外号。")
+    flash_nickname_notices(request, game.parse_nicknames(nicknames))
     return redirect("/admin/heroes")
 
 
@@ -128,6 +138,7 @@ def add_term(request: Request, user: Annotated[User, Depends(admin_user)],
                               name_en=name_en, nicknames=nicknames,
                               error=refused.message)
     flash(request, f"已添加{term.kind_label}：{term.name_zh}（{term.name_en}）。")
+    flash_nickname_notices(request, term.nicknames)
     return redirect("/admin/terms")
 
 
@@ -157,6 +168,9 @@ def preview_term_import(request: Request, user: Annotated[User, Depends(admin_us
     return templates.TemplateResponse(
         request, "admin/term_import_preview.html",
         {"title": "导入游戏术语：预览", "user": user, "plan": plan, "kinds": game.KINDS,
+         "notices": [f"第 {row.number} 行：{notice}" for row in sorted(
+             [*plan.added, *(row for _, row in plan.changed)], key=lambda row: row.number)
+             for notice in game.nickname_notices(row.nicknames)],
          "csv_file": base64.b64encode(csv_bytes).decode()})
 
 
@@ -191,7 +205,8 @@ def term_edit_page(request: Request, user: User, term: game.Term, *,
         request, "admin/term_edit.html",
         {"title": f"编辑{term.kind_label}：{term.name_zh}", "user": user,
          "term": term, "name_zh": name_zh, "name_en": name_en,
-         "nicknames": nicknames, "error": error},
+         "nicknames": nicknames, "notices": game.nickname_notices(term.nicknames),
+         "error": error},
         status_code=400 if error else 200)
 
 
@@ -218,6 +233,7 @@ def edit_term(request: Request, user: Annotated[User, Depends(admin_user)],
                               name_en=name_en, nicknames=nicknames,
                               error=refused.message)
     flash(request, f"已保存{term.kind_label}的官方名称和外号。")
+    flash_nickname_notices(request, game.parse_nicknames(nicknames))
     return redirect("/admin/terms")
 
 

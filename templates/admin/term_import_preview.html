@@ -3,6 +3,8 @@
   <h1>导入游戏术语：预览</h1>
   <p>还没有保存任何内容。确认后才会导入下面新增和修改的术语；被拒绝的行不会导入。</p>
 
+  {% for notice in notices %}<p class="flash flash-notice">{{ notice }}</p>{% endfor %}
+
   <h2>将新增 {{ plan.added|length }} 个</h2>
   {% if plan.added %}
   <div class="scroll">

@@ -172,8 +172,8 @@ def test_the_preview_warns_about_a_nickname_written_without_a_marker(admin, edit
                           body_zh="先拿 [[瓦妮莎]]，`瓦姐` 只在代码里。",
                           title_en="Pirates", body_en="Van is strong. Vanguard is not.")
     preview = preview_of(editor, edit_page)
-    assert "中文标题：外号“瓦姐”没有标记，官方名称是 瓦妮莎（Vanessa）" in preview
-    assert "英文正文：外号“Van”没有标记，官方名称是 瓦妮莎（Vanessa）" in preview
+    assert "中文标题：外号“瓦姐”没有标记（1 处），官方名称是 瓦妮莎（Vanessa）" in preview
+    assert "英文正文：外号“Van”没有标记（1 处），官方名称是 瓦妮莎（Vanessa）" in preview
     assert "中文正文" not in preview  # the marked name and the code don't count
 
 
@@ -360,7 +360,7 @@ def test_a_title_is_plain_text_so_the_preview_asks_for_the_official_name(admin, 
     edit_hero(admin, "Vanessa", name_zh="瓦妮莎", name_en="Vanessa", nicknames="瓦姐")
     edit_page = new_guide(editor, title_zh="瓦姐和[[Vanessa]]")
     preview = preview_of(editor, edit_page)
-    assert "中文标题：外号“瓦姐”没有标记，官方名称是 瓦妮莎（Vanessa），标题里请直接写 瓦妮莎。" in preview
+    assert "中文标题：外号“瓦姐”没有标记（1 处），官方名称是 瓦妮莎（Vanessa），标题里请直接写 瓦妮莎。" in preview
     assert "中文标题：标题里的 [[Vanessa]] 会原样显示，请直接写官方名称。" in preview
 
 
@@ -382,3 +382,48 @@ def test_seeding_again_leaves_game_terms_an_admin_has_edited(tmp_path, monkeypat
     assert result.returncode == 0, result.stdout + result.stderr
     assert "<td>物品</td><td>锚</td><td>Anchor</td><td></td>" in admin.get("/admin/terms").text
     assert "瓦姐" not in admin.get("/admin/heroes").text
+
+
+def test_each_unmarked_nickname_is_one_preview_warning_with_a_count(admin, editor):
+    edit_hero(admin, "Vanessa", name_zh="瓦妮莎", name_en="Vanessa",
+              nicknames="瓦姐|Van")
+    edit_page = new_guide(editor, body_zh="瓦姐先拿船。\n\n**瓦姐**再拿炮，瓦姐最后叠盾。",
+                          title_en="Pirates", body_en="VAN and van. Vanguard.")
+    preview = preview_of(editor, edit_page)
+    assert preview.count("外号“瓦姐”没有标记") == 1
+    assert "中文正文：外号“瓦姐”没有标记（3 处）" in preview
+    assert "英文正文：外号“Van”没有标记（2 处）" in preview
+
+
+ONE_CHARACTER_NOTICE = "只有一个汉字"
+
+
+def test_a_one_character_chinese_nickname_is_saved_with_a_notice(admin):
+    response = add_term(admin, "item", "船锚", "Anchor", nicknames="锚|大锚")
+    assert response.status_code == 303
+    terms = admin.get("/admin/terms").text
+    assert "<td>锚、大锚</td>" in terms
+    assert ("外号“锚”只有一个汉字：预览会把正文里每一个“锚”都当作这个外号，"
+            "可能出现很多提醒。") in terms
+    # The term's own page keeps saying so while the nickname is there.
+    assert ONE_CHARACTER_NOTICE in admin.get(term_edit_link(admin, "Anchor")).text
+
+    edit_term(admin, "Anchor", name_zh="船锚", name_en="Anchor", nicknames="大锚|V")
+    assert ONE_CHARACTER_NOTICE not in admin.get("/admin/terms").text
+    assert ONE_CHARACTER_NOTICE not in admin.get(term_edit_link(admin, "Anchor")).text
+
+
+def test_a_one_character_chinese_nickname_on_a_hero_is_saved_with_a_notice(admin):
+    response = edit_hero(admin, "Vanessa", name_zh="瓦妮莎", name_en="Vanessa",
+                         nicknames="瓦")
+    assert response.status_code == 303
+    assert "外号“瓦”只有一个汉字" in admin.get("/admin/heroes").text
+    assert ONE_CHARACTER_NOTICE in admin.get(edit_link(admin, "Vanessa")).text
+
+
+def test_a_csv_import_preview_points_out_one_character_chinese_nicknames(admin):
+    preview = upload_csv(admin, CSV_HEADER + "物品,船锚,Anchor,锚|大锚\n"
+                         + "物品,火药桶,Powder Keg,桶\n")
+    assert "第 2 行：外号“锚”只有一个汉字" in preview.text
+    assert "第 3 行：外号“桶”只有一个汉字" in preview.text
+    assert "将新增 2 个" in preview.text

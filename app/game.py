@@ -63,6 +63,16 @@ def _to_store(nicknames: str) -> str:
     return "\n".join(parse_nicknames(nicknames))
 
 
+def nickname_notices(nicknames: Iterable[str]) -> list[str]:
+    """A notice for each nickname that is a single Chinese character. It is
+    allowed, but it matches that character anywhere, so the preview may warn
+    about it often."""
+    return [f"外号“{nickname}”只有一个汉字：预览会把正文里每一个“{nickname}”"
+            "都当作这个外号，可能出现很多提醒。"
+            for nickname in nicknames
+            if re.fullmatch(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]", nickname)]
+
+
 def parse_nicknames(text: str) -> tuple[str, ...]:
     """The nicknames in `text`, separated by 、 or | (or one per line),
     trimmed, without blanks or repeats."""
@@ -232,13 +242,16 @@ class Glossary:
     def matching(self, name: str) -> list[Term]:
         return self._by_name.get(name.strip().casefold(), [])
 
-    def nicknames_in(self, text: str) -> list[tuple[str, Term]]:
-        """Each known nickname found in `text`, with its Game Term. Case is
-        ignored, and a nickname starting or ending in a Latin letter or digit
-        must be a whole word at that end (`Van` is not found in `Vanguard`),
-        while Chinese has no spaces to mark words, so 瓦姐 is found anywhere."""
-        return [(nickname, term) for term in self.terms for nickname in term.nicknames
-                if re.search(_whole_word(nickname), text, re.IGNORECASE)]
+    def nicknames_in(self, text: str) -> list[tuple[str, Term, int]]:
+        """Each known nickname found in `text`, with its Game Term and how
+        many times it is there. Case is ignored, and a nickname starting or
+        ending in a Latin letter or digit must be a whole word at that end
+        (`Van` is not found in `Vanguard`), while Chinese has no spaces to
+        mark words, so 瓦姐 is found anywhere (see nickname_notices)."""
+        found = [(nickname, term,
+                  len(re.findall(_whole_word(nickname), text, re.IGNORECASE)))
+                 for term in self.terms for nickname in term.nicknames]
+        return [(nickname, term, count) for nickname, term, count in found if count]
 
 
 def _whole_word(nickname: str) -> str:

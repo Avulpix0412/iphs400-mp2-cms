@@ -118,10 +118,12 @@ def render_markdown(text: str, lang: str, glossary: Glossary) -> Rendered:
 
 
 def nickname_warnings(text: str, lang: str, glossary: Glossary) -> list[str]:
-    """A warning for each known nickname in `text`, plain text in `lang`."""
-    return [f"外号“{nickname}”没有标记，官方名称是 {term.name_zh}（{term.name_en}），"
+    """One warning for each known nickname in `text`, plain text in `lang`,
+    saying how many times it is there."""
+    return [f"外号“{nickname}”没有标记（{count} 处），官方名称是"
+            f" {term.name_zh}（{term.name_en}），"
             f"可以写成 [[{getattr(term, f'name_{lang}')}]]。"
-            for nickname, term in glossary.nicknames_in(text)]
+            for nickname, term, count in glossary.nicknames_in(text)]
 
 
 def title_warnings(title: str, lang: str, glossary: Glossary) -> list[str]:
@@ -129,9 +131,10 @@ def title_warnings(title: str, lang: str, glossary: Glossary) -> list[str]:
     (markers are not rendered there), so it needs the Official name itself."""
     return [f"标题里的 [[{written}]] 会原样显示，请直接写官方名称。"
             for written in _MARKER.findall(title)] + [
-        f"外号“{nickname}”没有标记，官方名称是 {term.name_zh}（{term.name_en}），"
+        f"外号“{nickname}”没有标记（{count} 处），官方名称是"
+        f" {term.name_zh}（{term.name_en}），"
         f"标题里请直接写 {getattr(term, f'name_{lang}')}。"
-        for nickname, term in glossary.nicknames_in(title)]
+        for nickname, term, count in glossary.nicknames_in(title)]
 
 
 def _unmarked_text(html: str) -> str:
