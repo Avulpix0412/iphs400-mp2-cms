@@ -18,3 +18,10 @@ BASE_PATH = os.environ.get("CMS_BASE_PATH", "")
 def database_path() -> Path:
     """Read on every connect, so tests can point CMS_DATABASE at a temp file."""
     return Path(os.environ.get("CMS_DATABASE", ROOT / "cms.db"))
+
+
+def media_path() -> Path:
+    """The folder of uploaded images (never committed). It sits next to the
+    database unless CMS_MEDIA says otherwise, so a test's temporary database
+    gets its own media folder too."""
+    return Path(os.environ.get("CMS_MEDIA", database_path().parent / "media"))

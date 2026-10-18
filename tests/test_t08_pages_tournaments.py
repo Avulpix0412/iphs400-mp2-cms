@@ -260,7 +260,8 @@ def published_tournament_item(admin: TestClient, **fields) -> str:
 
 
 TOURNAMENT_LIST_ITEM = re.compile(
-    r'<li><span class="badge">([^<]+)</span>\s*<a href="([^"]+)">([^<]+)</a>')
+    r'<li>\s*(?:<img [^>]*>\s*)?<span class="badge">([^<]+)</span>\s*'
+    r'<a href="([^"]+)">([^<]+)</a>')  # after the item's cover, if it has one
 
 
 def tournament_list(site: Path, lang: str) -> list[tuple[str, str, str]]:
@@ -484,7 +485,7 @@ def test_every_page_and_tournament_route_is_behind_an_admin_only_guard():
     routes = {(method, route.path) for module in (pages, tournaments)
               for route in module.router.routes if isinstance(route, APIRoute)
               for method in route.methods or ()}
-    assert len(routes) == 20
+    assert len(routes) == 23
     assert routes <= set(admin_only_routes())
 
 

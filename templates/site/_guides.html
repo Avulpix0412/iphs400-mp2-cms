@@ -1,9 +1,12 @@
-{# The list of Guides shown on the home, Hero and Author pages. #}
+{# The list of Guides shown on the home, Hero and Author pages, each with
+   its cover. #}
 {% macro guide_list(guides) %}
   {% if not guides %}<p>{{ t.no_guides }}</p>{% else %}
   <ul class="guides">
     {% for guide in guides %}
     <li>
+      {% set image = cover(guide) %}
+      {% if image %}<img src="{{ media_link(image) }}" alt="{{ image.alt(lang) }}" loading="lazy">{% endif %}
       <a href="{{ link("guides/" ~ guide.slug ~ "/") }}">{{ guide|localized("title", lang) }}</a>
       <small>{{ guide|localized("hero_name", lang) }} · {{ guide.patch_name }}
         · {{ guide.author_name }} · {{ guide.updated_at|beijing_date }}</small>

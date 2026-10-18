@@ -49,7 +49,7 @@ def check_page(c: TestClient, page_url: str, page: str) -> None:
     for attribute, target in found:
         assert not target.startswith("/"), f"{page_url}: {attribute}={target!r}"
         resolved = urljoin(f"http://testserver{page_url}", target)
-        if attribute == "href" or (attribute == "action" and target in get_forms):
+        if attribute in ("href", "src") or (attribute == "action" and target in get_forms):
             assert c.get(resolved).status_code == 200, f"{page_url}: {target}"
         else:
             # POST targets: an empty form is refused for its CSRF token (403),
@@ -188,3 +188,37 @@ def test_a_refused_page_form_reshown_at_its_post_url_still_links_correctly(admin
     response = submit(admin, about, action, slug="guides", title_zh="关于")
     assert response.status_code == 400
     check_page(admin, action, response.text)
+
+
+def test_pages_showing_images_link_relatively_and_their_images_load(admin, client_as):
+    from test_s1_images import PNG, SVG, upload, uploaded
+    from test_t03_guides import act, save
+    from test_t06_revisions_trash import open_revision, revision_page
+    from test_t08_pages_tournaments import new_tournament_item, tournament_form_values
+
+    def check(c: TestClient, *page_urls: str) -> None:
+        for page_url in page_urls:
+            response = c.get(page_url)
+            assert response.status_code == 200, page_url
+            assert "<img " in response.text, page_url
+            check_page(c, page_url, response.text)
+
+    editor = client_as("editor")
+    edit_page = new_guide(editor)
+    filename = uploaded(editor, edit_page, PNG)
+    save(editor, edit_page, body_zh=f"![]({filename})")
+    guide = edit_page.removesuffix("/edit")
+    check(editor, edit_page, f"{guide}/preview")
+    act(editor, edit_page, "submit")
+    check(admin, f"{guide}/review")
+    act(admin, edit_page, "publish")
+    open_revision(editor, edit_page)
+    revision = revision_page(edit_page)
+    check(editor, revision, f"{guide}/revision/preview")
+    item = new_tournament_item(admin, body_zh=f"![]({filename})")
+    uploaded(admin, item, PNG, values=tournament_form_values(admin, item))
+    check(admin, item)
+
+    refused = upload(editor, revision, SVG, name="x.svg")
+    assert refused.status_code == 400
+    check_page(editor, f"{guide}/revision/images", refused.text)

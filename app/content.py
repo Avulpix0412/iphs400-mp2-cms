@@ -9,15 +9,19 @@ Unpublish it or delete it for good. Every function takes the acting user and
 refuses anyone who can't manage_pages, whatever the route in front of it
 checked. Anything the console should refuse raises `Refused` with a message
 to show.
+
+A Tournament item can have images (app/media.py) and an optional cover,
+changed with it; Pages have none.
 """
 from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, fields as fields_of, replace
 from datetime import date
+from pathlib import Path
 from typing import Protocol
 
-from app import db
+from app import db, media
 from app.accounts import User
 from app.guides import SLUG
 
@@ -292,6 +296,11 @@ class TournamentItem:
     status: str
     created_at: str
     updated_at: str
+    cover: str | None  # the chosen cover's file name; None: the first; '': none
+
+    @property
+    def media_owner(self) -> str:
+        return f"tournament/{self.id}"
 
     @property
     def kind_label(self) -> str:
@@ -320,13 +329,15 @@ class TournamentFields:
     tournament_date: str = ""
     patch_id: int | None = None
     announcement_id: int | None = None
+    images: media.ImageFields = media.ImageFields()
 
     @classmethod
     def of(cls, item: TournamentItem) -> TournamentFields:
         return cls(kind=item.kind, title_zh=item.title_zh, body_zh=item.body_zh,
                    title_en=item.title_en, body_en=item.body_en,
                    tournament_date=item.tournament_date, patch_id=item.patch_id,
-                   announcement_id=item.announcement_id)
+                   announcement_id=item.announcement_id,
+                   images=media.ImageFields(cover=item.cover))
 
 
 _TOURNAMENT_SELECT = """
@@ -414,19 +425,64 @@ def save_tournament_item(conn: sqlite3.Connection, actor: User, item_id: int,
     if published:
         _check_publishable(fields.title_zh, fields.body_zh, fields.title_en,
                            fields.body_en)
+    cover = current.cover if fields.images.cover is None else media.checked_cover(
+        conn, current.media_owner, fields.images.cover, optional=True)
     conn.execute(
         "UPDATE tournament_items SET kind = ?, title_zh = ?, body_zh = ?,"
         " title_en = ?, body_en = ?, tournament_date = ?, patch_id = ?,"
-        f" announcement_id = ?, updated_at = {db.NOW}"
+        f" announcement_id = ?, cover = ?, updated_at = {db.NOW}"
         + (f", site_changed_at = {db.NOW}" if published else "") + " WHERE id = ?",
         (fields.kind, fields.title_zh, fields.body_zh, fields.title_en,
          fields.body_en, fields.tournament_date, fields.patch_id,
-         fields.announcement_id, item_id))
+         fields.announcement_id, cover, item_id))
+    media.save_alts(conn, current.media_owner, fields.images)
     if published:
         _recaps_change_with(conn, current)
     if fields.kind != "announcement":
         _unlink_recaps_of(conn, current)
     return _existing_item(conn, item_id)
+
+
+def _touch_item(conn: sqlite3.Connection, item: TournamentItem) -> None:
+    """Mark the item as changed now, as a save does."""
+    conn.execute(f"UPDATE tournament_items SET updated_at = {db.NOW}"
+                 + (f", site_changed_at = {db.NOW}" if item.status == "published" else "")
+                 + " WHERE id = ?", (item.id,))
+
+
+def tournament_images(conn: sqlite3.Connection, actor: User,
+                      item_id: int) -> list[media.Image]:
+    return media.images(conn, tournament_item(conn, actor, item_id).media_owner)
+
+
+def add_tournament_image(conn: sqlite3.Connection, actor: User, item_id: int,
+                         upload: media.Upload) -> media.Image:
+    item = tournament_item(conn, actor, item_id)
+    try:
+        added = media.add(conn, item.media_owner, upload)
+    except media.BadImage as bad:
+        raise Refused(bad.message) from None
+    _touch_item(conn, item)
+    return added
+
+
+def remove_tournament_image(conn: sqlite3.Connection, actor: User, item_id: int,
+                            image_id: int) -> None:
+    """Delete one of the item's images, unless its text still uses it."""
+    item = tournament_item(conn, actor, item_id)
+    try:
+        removed = media.remove_unused(conn, item.media_owner, image_id,
+                                      item.body_zh, item.body_en)
+    except media.BadImage as bad:
+        raise Refused(bad.message) from None
+    if not removed:
+        raise NotFound("找不到这张图片，它可能已经被删除了。")
+    _touch_item(conn, item)
+
+
+def tournament_image_file(conn: sqlite3.Connection, actor: User, item_id: int,
+                          filename: str) -> Path | None:
+    return media.file(conn, tournament_item(conn, actor, item_id).media_owner, filename)
 
 
 def _recaps_change_with(conn: sqlite3.Connection, item: TournamentItem) -> None:
@@ -462,9 +518,10 @@ def unpublish_tournament_item(conn: sqlite3.Connection, actor: User,
 
 
 def delete_tournament_item(conn: sqlite3.Connection, actor: User, item_id: int) -> None:
-    """Delete a Tournament item for good; recaps that linked to it stay, with
-    no link."""
+    """Delete a Tournament item for good, with its images; recaps that linked
+    to it stay, with no link."""
     item = tournament_item(conn, actor, item_id)
+    media.remove_all(conn, item.media_owner)
     if item.status == "published":
         _recaps_change_with(conn, item)
     _unlink_recaps_of(conn, item)

@@ -10,6 +10,11 @@ preview: such unknown markers, markers naming several terms with different
 names, and known nicknames written without a marker. Warnings never block
 anything.
 
+An image written `![](<filename>)` with the file name of one of the item's
+uploaded images (app/media.py) gets the src that leads to that image from
+the page being rendered, and the image's alt text in the language rendered,
+if it has some; otherwise the alt written in the Markdown stays.
+
 Writers may mix HTML into their Markdown, so the result is always sanitized
 with nh3, which keeps formatting and images but drops scripts, event
 handlers, iframes and `javascript:` links. It also drops links and image
@@ -19,7 +24,7 @@ from a subfolder, so they would lead off the site.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from html import escape
 from html.parser import HTMLParser
@@ -79,6 +84,17 @@ class _Renderer(RendererHTML):
             return escape(token.content)
         return f'<span class="term">{escape(token.content)}</span>'
 
+    def image(self, tokens: Sequence[Token], idx: int, options: OptionsDict,
+              env: EnvType) -> str:
+        token = tokens[idx]
+        found = env["images"].get(token.attrGet("src") or "")
+        if found:
+            src, alt = found
+            token.attrSet("src", src)
+            if alt:  # the alt attribute is made from the children's text
+                token.children = [Token("text", "", 0, content=alt)]
+        return super().image(tokens, idx, options, env)
+
     def renderInlineAsText(self, tokens: Sequence[Token] | None,
                            options: OptionsDict, env: EnvType) -> str:
         """Text for an image's alt, where a marker shows as its name too."""
@@ -106,10 +122,13 @@ class Rendered:
     warnings: list[str]
 
 
-def render_markdown(text: str, lang: str, glossary: Glossary) -> Rendered:
+def render_markdown(text: str, lang: str, glossary: Glossary,
+                    images: Mapping[str, tuple[str, str]] | None = None) -> Rendered:
     """Markdown in, sanitized HTML out, with Game Term markers showing the
-    Official name in `lang` ("zh" or "en"), and the preview's warnings."""
-    env = {"lang": lang, "glossary": glossary, "warnings": []}
+    Official name in `lang` ("zh" or "en"), and the preview's warnings.
+    `images` maps each uploaded image's file name to its (src, alt) on this
+    page (see media.sources)."""
+    env = {"lang": lang, "glossary": glossary, "warnings": [], "images": images or {}}
     html = nh3.clean(_markdown.render(text, env),
                      attribute_filter=_no_root_absolute_urls,
                      allowed_classes={"span": {"term"}})

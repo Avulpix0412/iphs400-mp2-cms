@@ -9,7 +9,9 @@
   {% if not items %}<p>{{ t.no_tournament_items }}</p>{% else %}
   <ul class="tournament-items">
     {% for item in items %}
-    <li><span class="badge">{{ t[item.kind] }}</span>
+    <li>{% set image = cover(item) %}
+      {% if image %}<img src="{{ media_link(image) }}" alt="{{ image.alt(lang) }}" loading="lazy">{% endif %}
+      <span class="badge">{{ t[item.kind] }}</span>
       <a href="{{ link("tournaments/" ~ item.id ~ "/") }}">{{ item|localized("title", lang) }}</a>
       <small>{{ item.tournament_date }} · {{ item.patch_name }}</small></li>
     {% endfor %}

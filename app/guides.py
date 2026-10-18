@@ -21,16 +21,22 @@ exist, so it is refused as not found rather than forbidden.
 
 Deleting a Guide moves it to the Trash, which only Admins see. Outside the
 Trash, a Guide in it does not exist for anyone, the Site build included.
+
+A Guide's images (app/media.py) change with its text: whoever may save the
+Guide may upload, describe and delete them and choose its cover, and a
+Revision has its own copy of them, which replaces the Guide's when it is
+Published.
 """
 from __future__ import annotations
 
 import re
 import sqlite3
+from pathlib import Path
 from dataclasses import dataclass, fields as fields_of
 from typing import ClassVar
 from itertools import groupby
 
-from app import db, game
+from app import db, game, media
 from app.accounts import SUBMISSION_BANNED, User
 from app.rendering import highlight, render_markdown
 
@@ -80,7 +86,17 @@ class Guide:
     trashed_at: str | None
     returned: bool  # a Draft that a Return or Unpublish sent back to its Author
     revision_status: str | None  # the open Revision's status, if there is one
+    cover: str | None  # the chosen cover's file name; None for the first image
     is_revision: ClassVar[bool] = False
+
+    @property
+    def media_owner(self) -> str:
+        return f"guide/{self.id}"
+
+    @property
+    def revision_media_owner(self) -> str:
+        """Whose images its open Revision's are."""
+        return f"{self.media_owner}/revision"
 
     @property
     def status_label(self) -> str:
@@ -107,12 +123,14 @@ class GuideFields:
     hero_id: int | None = None
     patch_id: int | None = None
     slug: str | None = None
+    images: media.ImageFields = media.ImageFields()
 
     @classmethod
     def of(cls, guide: Guide | Revision) -> GuideFields:
         return cls(title_zh=guide.title_zh, body_zh=guide.body_zh,
                    title_en=guide.title_en, body_en=guide.body_en,
-                   hero_id=guide.hero_id, patch_id=guide.patch_id, slug=guide.slug)
+                   hero_id=guide.hero_id, patch_id=guide.patch_id, slug=guide.slug,
+                   images=media.ImageFields(cover=guide.cover))
 
 
 _SELECT = """
@@ -292,20 +310,90 @@ def can_edit(actor: User, guide: Guide) -> bool:
 def save(conn: sqlite3.Connection, actor: User, guide_id: int,
          fields: GuideFields) -> Guide:
     """Save changes to a Guide without changing its status."""
-    current = _editable(conn, actor, guide_id)
-    if not can_edit(actor, current):
-        raise NotAllowed("已发布的攻略要通过修订来修改。")
+    current = _changeable(conn, actor, guide_id)
     hero, patch_id = _checked_hero_and_patch(conn, fields, current)
     slug = _checked_slug(conn, actor, current, fields.slug)
     if current.status != "draft":
         _check_text(fields)
     conn.execute(
         "UPDATE guides SET title_zh = ?, body_zh = ?, title_en = ?, body_en = ?,"
-        f" hero_id = ?, patch_id = ?, slug = ?, updated_at = {db.NOW}"
+        f" hero_id = ?, patch_id = ?, slug = ?, cover = ?, updated_at = {db.NOW}"
         " WHERE id = ?",
         (fields.title_zh.strip(), fields.body_zh, fields.title_en.strip(),
-         fields.body_en, hero.id, patch_id, slug, guide_id))
+         fields.body_en, hero.id, patch_id, slug,
+         _kept_cover(conn, current, fields), guide_id))
+    media.save_alts(conn, current.media_owner, fields.images)
     return _editable(conn, actor, guide_id)
+
+
+def _kept_cover(conn: sqlite3.Connection, item: Guide | Revision,
+                fields: GuideFields) -> str | None:
+    """The cover to keep: the one the form chose, if it sent a choice."""
+    if fields.images.cover is None:
+        return item.cover
+    return media.checked_cover(conn, item.media_owner, fields.images.cover,
+                               optional=False)
+
+
+def _changeable(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
+    """The Guide, if `actor` may save it."""
+    current = _editable(conn, actor, guide_id)
+    if not can_edit(actor, current):
+        raise NotAllowed("已发布的攻略要通过修订来修改。")
+    return current
+
+
+def _add_image(conn: sqlite3.Connection, item: Guide | Revision,
+               upload: media.Upload) -> media.Image:
+    try:
+        added = media.add(conn, item.media_owner, upload)
+    except media.BadImage as bad:
+        raise Refused(bad.message) from None
+    _touch(conn, item)
+    return added
+
+
+def _remove_image(conn: sqlite3.Connection, item: Guide | Revision,
+                  image_id: int) -> None:
+    """Delete one of the item's images, unless its text still uses it."""
+    try:
+        removed = media.remove_unused(conn, item.media_owner, image_id,
+                                      item.body_zh, item.body_en)
+    except media.BadImage as bad:
+        raise Refused(bad.message) from None
+    if not removed:
+        raise GuideNotFound("找不到这张图片，它可能已经被删除了。")
+    _touch(conn, item)
+
+
+def _touch(conn: sqlite3.Connection, item: Guide | Revision) -> None:
+    """Mark the Guide (or Revision) as changed now, as a save does."""
+    table, key = ("revisions", "guide_id") if item.is_revision else ("guides", "id")
+    conn.execute(f"UPDATE {table} SET updated_at = {db.NOW} WHERE {key} = ?", (item.id,))
+
+
+def images(conn: sqlite3.Connection, actor: User, guide_id: int) -> list[media.Image]:
+    """The Guide's images, for anyone who may see it."""
+    return media.images(conn, _editable(conn, actor, guide_id).media_owner)
+
+
+def add_image(conn: sqlite3.Connection, actor: User, guide_id: int,
+              upload: media.Upload) -> media.Image:
+    """Upload an image into a Guide `actor` may save."""
+    return _add_image(conn, _changeable(conn, actor, guide_id), upload)
+
+
+def remove_image(conn: sqlite3.Connection, actor: User, guide_id: int,
+                 image_id: int) -> None:
+    """Delete an image of a Guide `actor` may save, unless its text uses it."""
+    _remove_image(conn, _changeable(conn, actor, guide_id), image_id)
+
+
+def image_file(conn: sqlite3.Connection, actor: User, guide_id: int,
+               filename: str) -> Path | None:
+    """The file of the Guide's image called `filename`, for anyone who may
+    see the Guide; None if it has no such image."""
+    return media.file(conn, _editable(conn, actor, guide_id).media_owner, filename)
 
 
 def _check_text(fields: GuideFields | Guide | Revision) -> None:
@@ -557,7 +645,12 @@ class Revision:
     created_at: str
     updated_at: str
     returned: bool  # a Draft that an Admin Returned
+    cover: str | None  # as a Guide's, among the Revision's own images
     is_revision: ClassVar[bool] = True
+
+    @property
+    def media_owner(self) -> str:
+        return self.guide.revision_media_owner
 
     @property
     def guide_changed_since(self) -> bool:
@@ -634,7 +727,7 @@ def can_open_revision(actor: User, guide: Guide) -> bool:
 
 def open_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> Revision:
     """The Author starts a Revision of their Published Guide, as a Draft copy
-    of its texts, Hero and Patch."""
+    of its texts, Hero, Patch, images and cover."""
     current = _editable(conn, actor, guide_id)
     if actor.can("manage_all_guides"):
         raise Refused("管理员可以直接修改已发布的攻略，不需要修订。")
@@ -646,11 +739,12 @@ def open_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> Revis
     try:
         conn.execute(
             "INSERT INTO revisions (guide_id, base_updated_at, title_zh, body_zh,"
-            " title_en, body_en, hero_id, patch_id) SELECT id, updated_at, title_zh,"
-            " body_zh, title_en, body_en, hero_id, patch_id FROM guides WHERE id = ?",
-            (guide_id,))
+            " title_en, body_en, hero_id, patch_id, cover) SELECT id, updated_at,"
+            " title_zh, body_zh, title_en, body_en, hero_id, patch_id, cover"
+            " FROM guides WHERE id = ?", (guide_id,))
     except sqlite3.IntegrityError:  # the Guide already has one
         raise Refused("这篇攻略已经有一份修订了，请继续修改那一份。") from None
+    media.copy_all(conn, current.media_owner, current.revision_media_owner)
     return _open(conn, actor, guide_id)
 
 
@@ -664,10 +758,36 @@ def save_revision(conn: sqlite3.Connection, actor: User, guide_id: int,
         _check_text(fields)
     conn.execute(
         "UPDATE revisions SET title_zh = ?, body_zh = ?, title_en = ?, body_en = ?,"
-        f" hero_id = ?, patch_id = ?, updated_at = {db.NOW} WHERE guide_id = ?",
+        f" hero_id = ?, patch_id = ?, cover = ?, updated_at = {db.NOW} WHERE guide_id = ?",
         (fields.title_zh.strip(), fields.body_zh, fields.title_en.strip(),
-         fields.body_en, hero.id, patch_id, guide_id))
+         fields.body_en, hero.id, patch_id, _kept_cover(conn, current, fields), guide_id))
+    media.save_alts(conn, current.media_owner, fields.images)
     return _open(conn, actor, guide_id)
+
+
+def revision_images(conn: sqlite3.Connection, actor: User,
+                    guide_id: int) -> list[media.Image]:
+    """The open Revision's own images."""
+    return media.images(conn, _open(conn, actor, guide_id).media_owner)
+
+
+def add_revision_image(conn: sqlite3.Connection, actor: User, guide_id: int,
+                       upload: media.Upload) -> media.Image:
+    """Upload an image into the open Revision; the Published Guide's images
+    stay as they are."""
+    return _add_image(conn, _open(conn, actor, guide_id), upload)
+
+
+def remove_revision_image(conn: sqlite3.Connection, actor: User, guide_id: int,
+                          image_id: int) -> None:
+    """Delete one of the open Revision's images, unless its text uses it.
+    The Published Guide keeps its own."""
+    _remove_image(conn, _open(conn, actor, guide_id), image_id)
+
+
+def revision_image_file(conn: sqlite3.Connection, actor: User, guide_id: int,
+                        filename: str) -> Path | None:
+    return media.file(conn, _open(conn, actor, guide_id).media_owner, filename)
 
 
 def can_submit_revision(actor: User, revision: Revision) -> bool:
@@ -697,13 +817,14 @@ def can_discard_revision(actor: User, revision: Revision) -> bool:
 
 
 def discard_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> None:
-    """The Author throws their open Revision away, so they can open a new one
-    later. The Published Guide is untouched; Returns of the Revision stay in
-    its history."""
+    """The Author throws their open Revision away, with its images, so they
+    can open a new one later. The Published Guide is untouched; Returns of
+    the Revision stay in its history."""
     current = _open(conn, actor, guide_id)
     if not can_discard_revision(actor, current):
         raise NotAllowed("只有作者本人可以放弃修订。")
     conn.execute("DELETE FROM revisions WHERE guide_id = ?", (guide_id,))
+    media.remove_all(conn, current.media_owner)
 
 
 def can_publish_revision(actor: User, revision: Revision) -> bool:
@@ -711,8 +832,8 @@ def can_publish_revision(actor: User, revision: Revision) -> bool:
 
 
 def publish_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
-    """An Admin approves a Revision: it replaces the Guide's texts, Hero and
-    Patch (the old ones are not kept) and is gone. The slug stays, and the
+    """An Admin approves a Revision: it replaces the Guide's texts, Hero,
+    Patch, images and cover (the old ones are not kept) and is gone. The slug stays, and the
     Guide's 更新于 date moves on. Readers see it at the next Site build."""
     current = _open(conn, actor, guide_id)
     if not actor.can("publish_guides"):
@@ -727,9 +848,10 @@ def publish_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> Gu
         raise Refused("这份修订刚被别人改过，请刷新页面后再试。")
     conn.execute(
         "UPDATE guides SET title_zh = ?, body_zh = ?, title_en = ?, body_en = ?,"
-        f" hero_id = ?, patch_id = ?, updated_at = {db.NOW} WHERE id = ?",
+        f" hero_id = ?, patch_id = ?, cover = ?, updated_at = {db.NOW} WHERE id = ?",
         (current.title_zh, current.body_zh, current.title_en, current.body_en,
-         current.hero_id, current.patch_id, guide_id))
+         current.hero_id, current.patch_id, current.cover, guide_id))
+    media.move_all(conn, current.media_owner, current.guide.media_owner)
     return _editable(conn, actor, guide_id)
 
 
@@ -801,10 +923,13 @@ def restore(conn: sqlite3.Connection, actor: User, guide_id: int) -> None:
 
 
 def delete_for_good(conn: sqlite3.Connection, actor: User, guide_id: int) -> None:
-    """An Admin deletes a Guide in the Trash for good, with its Review notes
-    and any open Revision. It cannot be restored."""
-    if in_trash(conn, actor, guide_id).status == "published":
+    """An Admin deletes a Guide in the Trash for good, with its Review notes,
+    any open Revision, and the images of both. It cannot be restored."""
+    trashed_guide = in_trash(conn, actor, guide_id)
+    if trashed_guide.status == "published":
         conn.execute("INSERT INTO removed_guides (guide_id) VALUES (?)", (guide_id,))
+    media.remove_all(conn, trashed_guide.media_owner)
+    media.remove_all(conn, trashed_guide.revision_media_owner)
     conn.execute(f"DELETE FROM guides WHERE id = ? AND NOT {_NOT_TRASHED}", (guide_id,))
 
 

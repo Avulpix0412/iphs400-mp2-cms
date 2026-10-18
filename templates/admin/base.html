@@ -44,6 +44,12 @@
     .badge { display: inline-block; padding: 0 .6rem; border-radius: 1rem;
              color: #fff; background: var(--bad); font-size: .9em; }
     button { font: inherit; padding: .3rem .9rem; cursor: pointer; }
+    /* An image in an editor's image section: thumbnail beside its fields. */
+    .image { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: start;
+             padding-block: .75rem; border-bottom: 1px solid var(--line); }
+    .image img { width: 10rem; max-width: 100%; height: auto; }
+    .image > div { flex: 1 1 14rem; min-width: 0; }
+    .image code { overflow-wrap: anywhere; }
   </style>
 </head>
 <body>

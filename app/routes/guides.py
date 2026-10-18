@@ -11,12 +11,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.datastructures import FormData
 
-from app import db, game, guides
+from app import db, game, guides, media
 from app.rendering import highlight, preview_warnings, render_markdown
 from app.accounts import User
 from app.guides import Guide, GuideFields, ReviewNote, Revision
-from app.web import (AdminRequired, flash, form_text, id_or_none, redirect,
-                     signed_in_user, templates)
+from app.web import (AdminRequired, console_root, flash, form_text, id_or_none, image_fields,
+                     image_response, redirect, sent_image, signed_in_user, templates)
 
 router = APIRouter(dependencies=[Depends(signed_in_user)])
 
@@ -32,7 +32,8 @@ def _fields_from(form: FormData) -> GuideFields:
                        title_en=text("title_en"), body_en=text("body_en"),
                        hero_id=id_or_none(text("hero_id")),
                        patch_id=id_or_none(text("patch_id")),
-                       slug=slug if isinstance(slug, str) else None)
+                       slug=slug if isinstance(slug, str) else None,
+                       images=image_fields(form))
 
 
 async def guide_fields(request: Request) -> GuideFields:
@@ -59,11 +60,13 @@ def editor_page(request: Request, user: User, guide: Guide | None,
         heroes = game.heroes(conn)
         patches = guides.patch_choices(conn, guide)
         rounds = guides.review_rounds(conn, user, guide.id) if guide else []
+        images = guides.images(conn, user, guide.id) if guide else []
     title = f"编辑攻略：{guide.title_zh or '（无标题）'}" if guide else "写攻略"
     return templates.TemplateResponse(
         request, "admin/guide_edit.html",
         {"title": title, "user": user, "guide": guide, "fields": fields,
          "heroes": heroes, "patches": patches, "error": error,
+         "images": images, "cover": media.cover(images, fields.images.cover),
          "review_rounds": rounds, "statuses": guides.STATUS_LABELS,
          "can_submit": guide is not None and guides.can_submit(user, guide),
          "can_publish": guide is not None and guides.can_publish(user, guide),
@@ -151,8 +154,12 @@ def preview_page(request: Request, user: User, item: Guide | Revision):
     with db.connect() as conn:
         latest, earlier = guides.quotes_to_highlight(conn, user, item)
         glossary = game.glossary(conn)
-    rendered_zh = render_markdown(item.body_zh, "zh", glossary)
-    rendered_en = render_markdown(item.body_en, "en", glossary)
+        images = media.images(conn, item.media_owner)
+    src = image_src(request, item)
+    rendered_zh = render_markdown(item.body_zh, "zh", glossary,
+                                  media.sources(images, "zh", src))
+    rendered_en = render_markdown(item.body_en, "en", glossary,
+                                  media.sources(images, "en", src))
     body_zh, found_zh = highlight(rendered_zh.html, latest, earlier)
     body_en, found_en = highlight(rendered_en.html, latest, earlier)
     term_warnings = preview_warnings(item.title_zh, item.title_en, rendered_zh,
@@ -163,6 +170,11 @@ def preview_page(request: Request, user: User, item: Guide | Revision):
          "guide": item, "body_zh": body_zh, "body_en": body_en,
          "quotes": latest + earlier, "earlier": earlier,
          "found": found_zh | found_en, "term_warnings": term_warnings})
+
+
+def image_src(request: Request, item: Guide | Revision) -> str:
+    """Where the item's images are, from the page being shown."""
+    return f"{console_root(request)}{item.console_path}/images/{{}}"
 
 
 @router.get("/admin/guides/{guide_id}/preview")
@@ -184,7 +196,39 @@ def save_guide(request: Request, guide_id: int,
     return redirect(f"/admin/guides/{guide_id}/edit")
 
 
-WorkflowStep = Callable[[sqlite3.Connection, User, int], Guide | Revision]
+@router.post("/admin/guides/{guide_id}/images")
+def upload_image(request: Request, guide_id: int,
+                 user: Annotated[User, Depends(signed_in_user)],
+                 fields: Annotated[GuideFields | None, Depends(sent_guide_fields)],
+                 upload: Annotated[media.Upload, Depends(sent_image)]):
+    """Upload an image, saving the editor form's other fields with it."""
+    def step(conn: sqlite3.Connection, user: User, guide_id: int) -> None:
+        guides.add_image(conn, user, guide_id, upload)
+    return workflow_step(request, user, guide_id, fields, step,
+                         "图片已上传。把它的代码放进正文，它就会出现在那里。")
+
+
+@router.post("/admin/guides/{guide_id}/images/{image_id}/delete")
+def delete_image(request: Request, guide_id: int, image_id: int,
+                 user: Annotated[User, Depends(signed_in_user)],
+                 fields: Annotated[GuideFields | None, Depends(sent_guide_fields)]):
+    def step(conn: sqlite3.Connection, user: User, guide_id: int) -> None:
+        guides.remove_image(conn, user, guide_id, image_id)
+    return workflow_step(request, user, guide_id, fields, step, "图片已删除。")
+
+
+@router.get("/admin/guides/{guide_id}/images/{filename}")
+def guide_image(guide_id: int, filename: str,
+                user: Annotated[User, Depends(signed_in_user)]):
+    try:
+        with db.connect() as conn:
+            path = guides.image_file(conn, user, guide_id, filename)
+    except guides.Refused:
+        path = None
+    return image_response(path)
+
+
+WorkflowStep = Callable[[sqlite3.Connection, User, int], object]
 
 
 def workflow_step(request: Request, user: User, guide_id: int,
@@ -240,12 +284,16 @@ def review_page(request: Request, user: User, guide: Guide | Revision,
     kind = "修订" if guide.is_revision else ""
     with db.connect() as conn:
         glossary = game.glossary(conn)
+        images = media.images(conn, guide.media_owner)
+    src = image_src(request, guide)
     return templates.TemplateResponse(
         request, "admin/guide_review.html",
         {"title": f"审核{kind}：{guide.title_zh or '（无标题）'}", "user": user,
          "guide": guide, "notes": rows, "error": error,
-         "body_zh": render_markdown(guide.body_zh, "zh", glossary).html,
-         "body_en": render_markdown(guide.body_en, "en", glossary).html},
+         "body_zh": render_markdown(guide.body_zh, "zh", glossary,
+                                    media.sources(images, "zh", src)).html,
+         "body_en": render_markdown(guide.body_en, "en", glossary,
+                                    media.sources(images, "en", src)).html},
         status_code=status_code)
 
 
@@ -301,11 +349,13 @@ def revision_editor_page(request: Request, user: User, revision: Revision,
         heroes = game.heroes(conn)
         patches = guides.patch_choices(conn, revision)
         rounds = guides.revision_rounds(conn, user, revision.id)
+        images = guides.revision_images(conn, user, revision.id)
     return templates.TemplateResponse(
         request, "admin/revision_edit.html",
         {"title": f"修订：{revision.guide.title_zh or '（无标题）'}", "user": user,
          "revision": revision, "fields": fields, "heroes": heroes,
          "patches": patches, "error": error, "review_rounds": rounds,
+         "images": images, "cover": media.cover(images, fields.images.cover),
          "can_submit": guides.can_submit_revision(user, revision),
          "can_publish": guides.can_publish_revision(user, revision),
          "can_review": guides.can_publish_revision(user, revision),
@@ -382,6 +432,38 @@ def revision_step(request: Request, user: User, guide_id: int,
         return revision_refused_page(request, user, guide_id, fields, refused)
     flash(request, done)
     return redirect(f"/admin/guides/{guide_id}/{then}")
+
+
+@router.post("/admin/guides/{guide_id}/revision/images")
+def upload_revision_image(request: Request, guide_id: int,
+                          user: Annotated[User, Depends(signed_in_user)],
+                          fields: Annotated[GuideFields | None, Depends(sent_guide_fields)],
+                          upload: Annotated[media.Upload, Depends(sent_image)]):
+    def step(conn: sqlite3.Connection, user: User, guide_id: int) -> None:
+        guides.add_revision_image(conn, user, guide_id, upload)
+    return revision_step(request, user, guide_id, fields, step,
+                         "图片已上传到修订里。审核通过前，网站上仍显示原来的图片。")
+
+
+@router.post("/admin/guides/{guide_id}/revision/images/{image_id}/delete")
+def delete_revision_image(request: Request, guide_id: int, image_id: int,
+                          user: Annotated[User, Depends(signed_in_user)],
+                          fields: Annotated[GuideFields | None, Depends(sent_guide_fields)]):
+    def step(conn: sqlite3.Connection, user: User, guide_id: int) -> None:
+        guides.remove_revision_image(conn, user, guide_id, image_id)
+    return revision_step(request, user, guide_id, fields, step,
+                         "图片已从修订里删除。审核通过前，网站上仍显示原来的图片。")
+
+
+@router.get("/admin/guides/{guide_id}/revision/images/{filename}")
+def revision_image(guide_id: int, filename: str,
+                   user: Annotated[User, Depends(signed_in_user)]):
+    try:
+        with db.connect() as conn:
+            path = guides.revision_image_file(conn, user, guide_id, filename)
+    except guides.Refused:
+        path = None
+    return image_response(path)
 
 
 @router.post("/admin/guides/{guide_id}/revision/submit")

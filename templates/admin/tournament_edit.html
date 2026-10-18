@@ -63,5 +63,7 @@
     {% if item and item.status == "draft" %}
     <button type="submit" formaction="{{ console_root(request) }}{{ path }}/publish">发布</button>
     {% endif %}
+    {# After the buttons, so Enter in a field presses 保存. #}
+    {% with saved = item is not none, no_cover = true %}{% include "admin/_images.html" %}{% endwith %}
   </form>
 {% endblock %}
