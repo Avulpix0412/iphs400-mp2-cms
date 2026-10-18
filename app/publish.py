@@ -35,6 +35,7 @@ body { font: 16px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
 header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
 header .brand { font-weight: 700; text-decoration: none; margin-inline-end: auto; }
 main { margin-block: 2rem; }
+.term { font-weight: 600; }
 .fallback-notice { display: none; }
 .fallback-notice:target { display: block; }
 """
@@ -56,14 +57,15 @@ NEWEST_ON_HOME = 10
 NO_ENGLISH_TEXT = "no-english-text"  # the id of the fallback notice
 
 
-def environment() -> Environment:
+def environment(glossary: game.Glossary) -> Environment:
     env = Environment(
         loader=FileSystemLoader(str(settings.TEMPLATES)),
         autoescape=select_autoescape(["html"]),
     )
     # `guide|localized("title", lang)` is guide.title_zh or guide.title_en.
     env.filters["localized"] = lambda item, field, lang: getattr(item, f"{field}_{lang}")
-    env.filters["markdown"] = render_markdown
+    # `text|markdown(lang)`: sanitized HTML, with Game Terms in `lang`.
+    env.filters["markdown"] = lambda text, lang: render_markdown(text, lang, glossary).html
     return env
 
 
@@ -92,9 +94,10 @@ class _Writer:
     `switch_link`, the language switch: the same page in the `other` tree
     unless `switch_to` names another path inside that tree."""
 
-    def __init__(self, out: Path, current_patch: str | None) -> None:
+    def __init__(self, out: Path, current_patch: str | None,
+                 glossary: game.Glossary) -> None:
         self.out = out
-        self.env = environment()
+        self.env = environment(glossary)
         self.current_patch = current_patch
 
     def page(self, path: str, template: str, *, lang: str | None = None,
@@ -125,11 +128,13 @@ def render_site(out: Path | None = None) -> Path:
         published = guides.published(conn)
         heroes = game.heroes(conn)
         patches = game.patches(conn)
+        glossary = game.glossary(conn)
     (out / "style.css").write_text(CSS)
     # Every Author with a Published Guide gets a page in both trees, even if
     # none of their Guides has English text.
     authors = {guide.author_id: guide.author_name for guide in published}
-    write = _Writer(out, current_patch=patches[0].name if patches else None)
+    write = _Writer(out, current_patch=patches[0].name if patches else None,
+                    glossary=glossary)
     write.page("", "site/root.html")
     for lang in LANGUAGES:
         listed = [guide for guide in published if guide.has_text_in(lang)]

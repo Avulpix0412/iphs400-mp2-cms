@@ -144,3 +144,18 @@ def test_users_pages_and_the_refusal_page_link_relatively_and_their_links_work(
     refused = editor.get(editor_page)
     assert refused.status_code == 403
     check_page(editor, editor_page, refused.text)
+
+
+def test_game_term_pages_link_relatively_and_their_links_work(admin):
+    from test_t07_game_terms import CSV_HEADER, add_term, term_edit_link, upload_csv
+
+    add_term(admin, "item", "船锚", "Anchor")
+    for page_url in ["/admin/terms", term_edit_link(admin, "Anchor"),
+                     "/admin/terms/import"]:
+        response = admin.get(page_url)
+        assert response.status_code == 200, page_url
+        check_page(admin, page_url, response.text)
+
+    preview = upload_csv(admin, CSV_HEADER + "物品,火药桶,Powder Keg,\n")
+    assert preview.status_code == 200
+    check_page(admin, "/admin/terms/import", preview.text)

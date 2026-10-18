@@ -56,7 +56,7 @@ async def csrf_rejected_handler(request: Request, exc: Exception) -> PlainTextRe
 
 
 def flash(request: Request, message: str, kind: str = "success") -> None:
-    """Queue a message for the next page shown. kind: success | error."""
+    """Queue a message for the next page shown. kind: success | notice | error."""
     request.session.setdefault("flash", []).append([kind, message])
 
 

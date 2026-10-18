@@ -3,6 +3,17 @@
   <p><a href="{{ console_root(request) }}{{ guide.console_path }}/edit">返回编辑</a>
     · 状态：{{ guide.status_label }}</p>
   <p>这是读者将会看到的样子（显示已保存的内容）。</p>
+  <section class="term-check" aria-labelledby="term-check">
+    <h2 id="term-check">游戏术语检查</h2>
+    {% if term_warnings %}
+    <p>下面这些不影响提交审核，但建议在提交前改好：</p>
+    <ul>
+      {% for warning in term_warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p>没有需要注意的游戏术语。</p>
+    {% endif %}
+  </section>
   {% if quotes %}
   <p>各轮审核意见引用的段落已用高亮标出（只在这里显示，读者看不到）：<mark>最近一轮</mark>{% if earlier %} · <mark class="earlier">更早几轮</mark>{% endif %}。{% for quote in quotes if quote not in found %}{% if loop.first %}已不在正文中的：{% endif %}“{{ quote }}”{% endfor %}</p>
   {% endif %}

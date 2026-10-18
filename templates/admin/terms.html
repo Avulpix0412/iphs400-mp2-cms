@@ -1,0 +1,42 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>游戏术语</h1>
+  <p>每个游戏术语都有游戏内的官方中文名和官方英文名。英雄在<a href="{{ console_root(request) }}admin/heroes">英雄</a>页面管理。</p>
+  <p><a href="{{ console_root(request) }}admin/terms/import">从 CSV 导入</a>（所有七个种类，英雄也可以）</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>种类</th><th>官方中文名</th><th>官方英文名</th><th>外号</th><th></th></tr></thead>
+    <tbody>
+    {% for term in terms %}
+      <tr><td>{{ term.kind_label }}</td><td>{{ term.name_zh }}</td><td>{{ term.name_en }}</td><td>{{ term.nicknames|join("、") }}</td>
+        <td><a href="{{ console_root(request) }}admin/terms/{{ term.id }}/edit">编辑</a></td></tr>
+    {% else %}
+      <tr><td colspan="5">还没有游戏术语。</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <h2>添加游戏术语</h2>
+  <form method="post" action="{{ console_root(request) }}admin/terms">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>种类
+      <select name="kind" required>
+        <option value="">请选择</option>
+        {% for value, label in kinds.items() if value != "hero" %}
+        <option value="{{ value }}"{% if value == kind %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>官方中文名
+      <input type="text" name="name_zh" value="{{ name_zh }}" required>
+    </label>
+    <label>官方英文名
+      <input type="text" name="name_en" value="{{ name_en }}" required>
+    </label>
+    <label>外号（可选，用 、 或 | 分隔）
+      <input type="text" name="nicknames" value="{{ nicknames }}">
+    </label>
+    <button type="submit">添加</button>
+  </form>
+{% endblock %}

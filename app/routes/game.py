@@ -1,13 +1,15 @@
-"""Heroes and Patches, managed by Admins only.
+"""Game Terms (Heroes on their own page) and Patches, managed by Admins only.
 
 The router itself requires an Admin, so no route here can forget to; each
 route's own `admin_user` is the same (cached) check, there to get the user.
 """
 from __future__ import annotations
 
+import base64
+from collections.abc import Iterable
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 
 from app import db, game
 from app.accounts import User
@@ -16,14 +18,22 @@ from app.web import admin_user, flash, redirect, templates
 router = APIRouter(dependencies=[Depends(admin_user)])
 
 
+def flash_nickname_notices(request: Request, nicknames: Iterable[str]) -> None:
+    """After a save: point out one-character Chinese nicknames, which were
+    saved but will make the preview warn often."""
+    for notice in game.nickname_notices(nicknames):
+        flash(request, notice, "notice")
+
+
 def hero_list_page(request: Request, user: User, *, name_zh: str = "",
-                   name_en: str = "", error: str | None = None):
+                   name_en: str = "", nicknames: str = "",
+                   error: str | None = None):
     with db.connect() as conn:
         heroes = game.heroes(conn)
     return templates.TemplateResponse(
         request, "admin/heroes.html",
         {"title": "英雄", "user": user, "heroes": heroes, "name_zh": name_zh,
-         "name_en": name_en, "error": error},
+         "name_en": name_en, "nicknames": nicknames, "error": error},
         status_code=400 if error else 200)
 
 
@@ -36,14 +46,17 @@ def hero_list(request: Request, user: Annotated[User, Depends(admin_user)]):
 @router.post("/admin/heroes")
 def add_hero(request: Request, user: Annotated[User, Depends(admin_user)],
              name_zh: Annotated[str, Form()] = "",
-             name_en: Annotated[str, Form()] = ""):
+             name_en: Annotated[str, Form()] = "",
+             nicknames: Annotated[str, Form()] = ""):
     try:
         with db.connect() as conn:
-            hero = game.add_hero(conn, name_zh=name_zh, name_en=name_en)
+            hero = game.add_hero(conn, name_zh=name_zh, name_en=name_en,
+                                 nicknames=nicknames)
     except game.Refused as refused:
         return hero_list_page(request, user, name_zh=name_zh, name_en=name_en,
-                              error=refused.message)
+                              nicknames=nicknames, error=refused.message)
     flash(request, f"已添加英雄：{hero.name_zh}（{hero.name_en}）。")
+    flash_nickname_notices(request, hero.nicknames)
     return redirect("/admin/heroes")
 
 
@@ -56,11 +69,13 @@ def existing_hero(hero_id: int) -> game.Hero:
 
 
 def hero_edit_page(request: Request, user: User, hero: game.Hero, *,
-                   name_zh: str, name_en: str, error: str | None = None):
+                   name_zh: str, name_en: str, nicknames: str,
+                   error: str | None = None):
     return templates.TemplateResponse(
         request, "admin/hero_edit.html",
         {"title": f"编辑英雄：{hero.name_zh}", "user": user, "hero": hero,
-         "name_zh": name_zh, "name_en": name_en, "error": error},
+         "name_zh": name_zh, "name_en": name_en, "nicknames": nicknames,
+         "notices": game.nickname_notices(hero.nicknames), "error": error},
         status_code=400 if error else 200)
 
 
@@ -68,22 +83,158 @@ def hero_edit_page(request: Request, user: User, hero: game.Hero, *,
 def hero_edit_form(request: Request, user: Annotated[User, Depends(admin_user)],
                    hero: Annotated[game.Hero, Depends(existing_hero)]):
     return hero_edit_page(request, user, hero, name_zh=hero.name_zh,
-                          name_en=hero.name_en)
+                          name_en=hero.name_en, nicknames="、".join(hero.nicknames))
 
 
 @router.post("/admin/heroes/{hero_id}")
 def edit_hero(request: Request, user: Annotated[User, Depends(admin_user)],
               hero: Annotated[game.Hero, Depends(existing_hero)],
               name_zh: Annotated[str, Form()] = "",
-              name_en: Annotated[str, Form()] = ""):
+              name_en: Annotated[str, Form()] = "",
+              nicknames: Annotated[str, Form()] = ""):
     try:
         with db.connect() as conn:
-            game.edit_hero(conn, hero.id, name_zh=name_zh, name_en=name_en)
+            game.edit_hero(conn, hero.id, name_zh=name_zh, name_en=name_en,
+                           nicknames=nicknames)
     except game.Refused as refused:
         return hero_edit_page(request, user, hero, name_zh=name_zh,
-                              name_en=name_en, error=refused.message)
-    flash(request, "已保存英雄的官方名称。")
+                              name_en=name_en, nicknames=nicknames,
+                              error=refused.message)
+    flash(request, "已保存英雄的官方名称和外号。")
+    flash_nickname_notices(request, game.parse_nicknames(nicknames))
     return redirect("/admin/heroes")
+
+
+def term_list_page(request: Request, user: User, *, kind: str = "",
+                   name_zh: str = "", name_en: str = "", nicknames: str = "",
+                   error: str | None = None):
+    with db.connect() as conn:
+        terms = game.terms(conn)
+    return templates.TemplateResponse(
+        request, "admin/terms.html",
+        {"title": "游戏术语", "user": user, "terms": terms, "kinds": game.KINDS,
+         "kind": kind, "name_zh": name_zh, "name_en": name_en,
+         "nicknames": nicknames, "error": error},
+        status_code=400 if error else 200)
+
+
+@router.get("/admin/terms")
+def term_list(request: Request, user: Annotated[User, Depends(admin_user)]):
+    return term_list_page(request, user)
+
+
+@router.post("/admin/terms")
+def add_term(request: Request, user: Annotated[User, Depends(admin_user)],
+             kind: Annotated[str, Form()] = "",
+             name_zh: Annotated[str, Form()] = "",
+             name_en: Annotated[str, Form()] = "",
+             nicknames: Annotated[str, Form()] = ""):
+    try:
+        with db.connect() as conn:
+            term = game.add_term(conn, kind=kind, name_zh=name_zh, name_en=name_en,
+                                 nicknames=nicknames)
+    except game.Refused as refused:
+        return term_list_page(request, user, kind=kind, name_zh=name_zh,
+                              name_en=name_en, nicknames=nicknames,
+                              error=refused.message)
+    flash(request, f"已添加{term.kind_label}：{term.name_zh}（{term.name_en}）。")
+    flash_nickname_notices(request, term.nicknames)
+    return redirect("/admin/terms")
+
+
+def import_page(request: Request, user: User, *, error: str | None = None):
+    return templates.TemplateResponse(
+        request, "admin/term_import.html",
+        {"title": "导入游戏术语", "user": user, "kinds": game.KINDS, "error": error},
+        status_code=400 if error else 200)
+
+
+@router.get("/admin/terms/import")
+def term_import_form(request: Request, user: Annotated[User, Depends(admin_user)]):
+    return import_page(request, user)
+
+
+@router.post("/admin/terms/import")
+def preview_term_import(request: Request, user: Annotated[User, Depends(admin_user)],
+                        file: Annotated[UploadFile | None, File()] = None):
+    """Show what the chosen CSV file would add, change and reject. Nothing is
+    saved until the Admin confirms; the file comes back with that form."""
+    csv_bytes = file.file.read() if file else b""
+    try:
+        with db.connect() as conn:
+            plan = game.plan_import(conn, csv_bytes)
+    except game.Refused as refused:
+        return import_page(request, user, error=refused.message)
+    return templates.TemplateResponse(
+        request, "admin/term_import_preview.html",
+        {"title": "导入游戏术语：预览", "user": user, "plan": plan, "kinds": game.KINDS,
+         "notices": [f"第 {row.number} 行：{notice}" for row in sorted(
+             [*plan.added, *(row for _, row in plan.changed)], key=lambda row: row.number)
+             for notice in game.nickname_notices(row.nicknames)],
+         "csv_file": base64.b64encode(csv_bytes).decode()})
+
+
+@router.post("/admin/terms/import/confirm")
+def confirm_term_import(request: Request, user: Annotated[User, Depends(admin_user)],
+                        csv_file: Annotated[str, Form()] = ""):
+    try:
+        csv_bytes = base64.b64decode(csv_file, validate=True)
+        with db.connect() as conn:
+            plan = game.import_terms(conn, csv_bytes)
+    except (ValueError, game.Refused):
+        return import_page(request, user, error="导入失败：请重新选择 CSV 文件并预览。")
+    rejected = f"{len(plan.rejected)} 行被拒绝，没有导入。" if plan.rejected else ""
+    flash(request, f"已导入游戏术语：新增 {len(plan.added)} 个，"
+                   f"修改 {len(plan.changed)} 个。{rejected}")
+    return redirect("/admin/terms")
+
+
+def existing_term(term_id: int) -> game.Term:
+    """A Game Term other than a Hero (whose edit page is on the Hero list)."""
+    with db.connect() as conn:
+        term = game.term(conn, term_id)
+    if term is None or term.kind == "hero":
+        raise HTTPException(status_code=404)
+    return term
+
+
+def term_edit_page(request: Request, user: User, term: game.Term, *,
+                   name_zh: str, name_en: str, nicknames: str,
+                   error: str | None = None):
+    return templates.TemplateResponse(
+        request, "admin/term_edit.html",
+        {"title": f"编辑{term.kind_label}：{term.name_zh}", "user": user,
+         "term": term, "name_zh": name_zh, "name_en": name_en,
+         "nicknames": nicknames, "notices": game.nickname_notices(term.nicknames),
+         "error": error},
+        status_code=400 if error else 200)
+
+
+@router.get("/admin/terms/{term_id}/edit")
+def term_edit_form(request: Request, user: Annotated[User, Depends(admin_user)],
+                   term: Annotated[game.Term, Depends(existing_term)]):
+    return term_edit_page(request, user, term, name_zh=term.name_zh,
+                          name_en=term.name_en, nicknames="、".join(term.nicknames))
+
+
+# Declared after POST /admin/terms/import, which it would otherwise catch.
+@router.post("/admin/terms/{term_id}")
+def edit_term(request: Request, user: Annotated[User, Depends(admin_user)],
+              term: Annotated[game.Term, Depends(existing_term)],
+              name_zh: Annotated[str, Form()] = "",
+              name_en: Annotated[str, Form()] = "",
+              nicknames: Annotated[str, Form()] = ""):
+    try:
+        with db.connect() as conn:
+            game.edit_term(conn, term.id, name_zh=name_zh, name_en=name_en,
+                           nicknames=nicknames)
+    except game.Refused as refused:
+        return term_edit_page(request, user, term, name_zh=name_zh,
+                              name_en=name_en, nicknames=nicknames,
+                              error=refused.message)
+    flash(request, f"已保存{term.kind_label}的官方名称和外号。")
+    flash_nickname_notices(request, game.parse_nicknames(nicknames))
+    return redirect("/admin/terms")
 
 
 def patch_list_page(request: Request, user: User, *, name: str = "",

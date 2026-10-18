@@ -4,21 +4,25 @@
     uv run --env-file .env python scripts/seed_demo.py
 
 Creates one Admin and one Editor, a few Heroes, a few Patches (the last
-one, 6.7, becomes the Current Patch), and demo Guides in Draft, Submitted and
-Published, made through the Guide workflow just as the console makes them. The passwords come from
+one, 6.7, becomes the Current Patch), demo Game Terms imported from
+demo_game_terms.csv (which doubles as a sample file for the console's CSV
+import), and demo Guides in Draft, Submitted and Published, made through the
+Guide workflow just as the console makes them. The passwords come from
 CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD; there are no default passwords, so
 the script refuses to run without both. Running it again leaves existing
-accounts, Heroes and Patches alone, and adds no Guides once any exist.
+accounts, Heroes, Patches and Game Terms alone (even ones an Admin has edited
+since), and adds no Guides once any exist.
 
 The rubric expects this to run clean on a fresh clone with .env.example values
 (item E4), because the database itself is never committed. Later tickets add
-other Game Terms, a Page and Tournament items.
+a Page and Tournament items.
 """
 from __future__ import annotations
 
 import os
 import sqlite3
 import sys
+from pathlib import Path
 
 from app import accounts, db, game, guides, settings
 
@@ -29,13 +33,15 @@ DEMO_USERS = [
     ("editor", "editor@example.test", "演示编辑", "CMS_EDITOR_PASSWORD"),
 ]
 
-# Official Chinese name, official English name.
+# Official Chinese name, official English name, nicknames.
 DEMO_HEROES = [
-    ("瓦妮莎", "Vanessa"),
-    ("皮格马利翁", "Pygmalien"),
-    ("杜利", "Dooley"),
-    ("马克", "Mak"),
+    ("瓦妮莎", "Vanessa", "瓦姐"),
+    ("皮格马利翁", "Pygmalien", ""),
+    ("杜利", "Dooley", ""),
+    ("马克", "Mak", ""),
 ]
+# Game Terms in the console's CSV import format.
+DEMO_GAME_TERMS = Path(__file__).with_name("demo_game_terms.csv")
 # Oldest first, so the last one added is the Current Patch.
 DEMO_PATCHES = ["6.5", "6.6", "6.7"]
 
@@ -43,7 +49,7 @@ DEMO_PATCHES = ["6.5", "6.6", "6.7"]
 # Chinese body, English title, English body.
 DEMO_GUIDES = [
     ("editor", "Vanessa", "6.7", "draft", "瓦妮莎海盗船流（写作中）",
-     "## 思路\n\n先拿船，再找炮。终局阵容还在测试。", "", ""),
+     "## 思路\n\n瓦姐先拿船，再找 [[火药桶]]。终局阵容还在测试。", "", ""),
     ("editor", "Dooley", "6.7", "submitted", "杜利核心流入门",
      "## 终局阵容\n\n围绕核心，前期拿**能量**物品。\n\n## 运营\n\n第 5 天前定型。",
      "Dooley core build for beginners",
@@ -51,9 +57,9 @@ DEMO_GUIDES = [
     ("editor", "Pygmalien", "6.6", "published", "皮格马利翁经济流",
      "## 思路\n\n前期攒钱，中期一次性升级。", "", ""),
     ("admin", "Mak", "6.7", "published", "马克药水流（6.7）",
-     "## 终局阵容\n\n药水叠毒，配合治疗。\n\n| 天数 | 目标 |\n|---|---|\n| 1–4 | 拿药水 |\n| 5+ | 叠毒 |",
+     "## 终局阵容\n\n[[Mak]] 用药水叠毒，配合治疗。\n\n| 天数 | 目标 |\n|---|---|\n| 1–4 | 拿药水 |\n| 5+ | 叠毒 |",
      "Mak potion build (6.7)",
-     "## Final lineup\n\nStack poison with potions and heal through the midgame."),
+     "## Final lineup\n\n[[马克]] stacks poison with potions and heals through the midgame."),
 ]
 
 
@@ -105,9 +111,10 @@ def main() -> int:
                 print(f"{role}: {email} already exists, left unchanged.")
                 continue
             print(f"{role}: created {email} (password from {var}).")
-        for name_zh, name_en in DEMO_HEROES:
+        for name_zh, name_en, nicknames in DEMO_HEROES:
             try:
-                game.add_hero(conn, name_zh=name_zh, name_en=name_en)
+                game.add_hero(conn, name_zh=name_zh, name_en=name_en,
+                              nicknames=nicknames)
             except game.Refused as refused:
                 print(f"hero: {name_en} left unchanged ({refused.message})")
                 continue
@@ -119,6 +126,9 @@ def main() -> int:
                 print(f"patch: {name} left unchanged ({refused.message})")
                 continue
             print(f"patch: created {name}.")
+        plan = game.import_terms(conn, DEMO_GAME_TERMS.read_bytes(), only_new=True)
+        print(f"game terms: {len(plan.added)} added, {plan.unchanged} already there,"
+              f" {len(plan.rejected)} rejected.")
         seed_guides(conn)
     print(f"Database: {settings.database_path()}")
     return 0

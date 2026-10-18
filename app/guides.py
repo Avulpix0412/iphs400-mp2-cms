@@ -459,7 +459,7 @@ def quotes_to_highlight(conn: sqlite3.Connection, actor: User,
     return latest, earlier
 
 
-def _checked_notes(guide: Guide | Revision,
+def _checked_notes(conn: sqlite3.Connection, guide: Guide | Revision,
                    notes: list[ReviewNote]) -> list[ReviewNote]:
     """The notes, trimmed. Each quotes a passage of the Guide's text as the
     preview shows it, so the Author will see it highlighted there."""
@@ -467,8 +467,9 @@ def _checked_notes(guide: Guide | Revision,
     if any(not note.quote or not note.advice for note in notes):
         raise Refused("每条审核意见都要有引用的段落和修改建议。")
     quotes = [note.quote for note in notes]
-    found = (highlight(render_markdown(guide.body_zh), quotes)[1]
-             | highlight(render_markdown(guide.body_en), quotes)[1])
+    glossary = game.glossary(conn)
+    found = (highlight(render_markdown(guide.body_zh, "zh", glossary).html, quotes)[1]
+             | highlight(render_markdown(guide.body_en, "en", glossary).html, quotes)[1])
     for quote in quotes:
         if quote not in found:
             raise Refused(f"在攻略正文中找不到引用的段落“{quote}”。"
@@ -509,7 +510,7 @@ def return_guide(conn: sqlite3.Connection, actor: User, guide_id: int,
         raise NotAllowed("只有管理员可以退回攻略。")
     if current.status != "submitted":
         raise Refused("只能退回待审核的攻略。")
-    notes = _checked_notes(current, notes)
+    notes = _checked_notes(conn, current, notes)
     if not notes:
         raise Refused("退回时请至少写一条审核意见。")
     return _send_back(conn, actor, current, "return", notes)
@@ -527,7 +528,7 @@ def unpublish(conn: sqlite3.Connection, actor: User, guide_id: int,
     if current.status != "published":
         raise Refused("只能撤下已发布的攻略。")
     unpublished = _send_back(conn, actor, current, "unpublish",
-                             _checked_notes(current, notes))
+                             _checked_notes(conn, current, notes))
     conn.execute(f"UPDATE revisions SET status = 'draft', updated_at = {db.NOW}"
                  " WHERE guide_id = ? AND status = 'submitted'", (guide_id,))
     return unpublished
@@ -739,7 +740,7 @@ def return_revision(conn: sqlite3.Connection, actor: User, guide_id: int,
         raise NotAllowed("只有管理员可以退回修订。")
     if current.status != "submitted":
         raise Refused("只能退回待审核的修订。")
-    notes = _checked_notes(current, notes)
+    notes = _checked_notes(conn, current, notes)
     if not notes:
         raise Refused("退回时请至少写一条审核意见。")
     row = conn.execute(f"UPDATE revisions SET status = 'draft', updated_at = {db.NOW}"
