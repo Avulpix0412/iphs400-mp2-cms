@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create demo data so a grader (and you) can use the CMS immediately.
 
-    uv run --env-file .env python scripts/seed_demo.py
+    uv run python scripts/seed_demo.py    # loads .env from the current folder
 
 Creates one Admin and one Editor, a few Heroes, a few Patches (the last
 one, 6.7, becomes the Current Patch), demo Game Terms imported from
@@ -26,7 +26,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from app import accounts, content, db, game, guides, settings
+from app import accounts, content, db, envfile, game, guides, settings
 
 # Matches DEMO_USERS in tests/conftest.py (which uses its own fixed passwords).
 DEMO_USERS = [
@@ -151,10 +151,11 @@ def _seed_user(conn: sqlite3.Connection, role: str) -> accounts.User:
 
 
 def main() -> int:
+    envfile.load()
     missing = [var for *_, var in DEMO_USERS if not os.environ.get(var)]
     if missing:
         print(f"Set {' and '.join(missing)} in .env (copy .env.example), then run "
-              "`uv run --env-file .env python scripts/seed_demo.py`.")
+              "`uv run python scripts/seed_demo.py`.")
         return 1
 
     for *_, var in DEMO_USERS:

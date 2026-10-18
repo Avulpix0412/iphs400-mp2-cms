@@ -8,11 +8,22 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
 SITE = ROOT / "site"
 
-SECRET_KEY = os.environ.get("CMS_SECRET_KEY", "dev-only-not-for-production")
-SITE_TITLE = os.environ.get("CMS_SITE_TITLE", "My CMS")
-# Set this to your Pages URL once you deploy, e.g.
-# https://yourname.github.io/iphs400-mp2-cms/
-BASE_PATH = os.environ.get("CMS_BASE_PATH", "")
+# The settings below are read when called, not at import, so the entry points
+# can load .env (app/envfile.py) after `settings` is already imported.
+
+
+def secret_key() -> str:
+    return os.environ.get("CMS_SECRET_KEY", "dev-only-not-for-production")
+
+
+def site_title() -> str:
+    return os.environ.get("CMS_SITE_TITLE", "My CMS")
+
+
+def base_path() -> str:
+    """Set this to your Pages URL once you deploy, e.g.
+    https://yourname.github.io/iphs400-mp2-cms/"""
+    return os.environ.get("CMS_BASE_PATH", "")
 
 
 def database_path() -> Path:
