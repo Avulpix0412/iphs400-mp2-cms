@@ -57,6 +57,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
         "edit_guide_slugs",
         "manage_trash",        # see the Trash, restore from it, delete for good
         "manage_game",         # Heroes and Patches
+        "manage_pages",        # Pages and Tournament items
         "build_site",          # 更新网站: the Site build and deploy
         "manage_users",        # the Users page and everything on it
     }),

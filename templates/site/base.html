@@ -11,6 +11,13 @@
     <a class="brand" href="{{ link("") }}">{{ t.site_name }}</a>
     {% if current_patch %}<span>{{ t.current_patch }}{{ current_patch }}</span>{% endif %}
     <a class="language-switch" href="{{ switch_link }}" hreflang="{{ other }}">{{ t.other_language }}</a>
+    <nav class="site-nav" aria-label="{{ "网站导航" if lang == "zh" else "Site" }}">
+      <a href="{{ link("guides/") }}">{{ t.guides }}</a>
+      <a href="{{ link("tournaments/") }}">{{ t.tournaments }}</a>
+      {% for nav_page in nav_pages %}
+      <a href="{{ link(nav_page.slug ~ "/") }}">{{ nav_page|localized("title", lang) }}</a>
+      {% endfor %}
+    </nav>
   </header>
   <main>{% block content %}{% endblock %}</main>
 </body>

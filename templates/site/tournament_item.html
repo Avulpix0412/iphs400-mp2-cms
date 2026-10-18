@@ -1,0 +1,13 @@
+{% extends "site/base.html" %}
+{% block title %}{{ item|localized("title", lang) }} · {{ t.site_name }}{% endblock %}
+{% block content %}
+  <article>
+    <p><span class="badge">{{ t[item.kind] }}</span></p>
+    <h1>{{ item|localized("title", lang) }}</h1>
+    <p>{{ t.tournament_date }} {{ item.tournament_date }} · {{ item.patch_name }}</p>
+    {% if announcement %}
+    <p class="follows">{{ t.follows }}<a href="{{ link("tournaments/" ~ announcement.id ~ "/") }}">{{ announcement|localized("title", lang) }}</a></p>
+    {% endif %}
+    {{ item|localized("body", lang)|markdown(lang)|safe }}
+  </article>
+{% endblock %}

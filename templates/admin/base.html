@@ -57,6 +57,10 @@
     <a href="{{ console_root(request) }}admin/terms">游戏术语</a>
     <a href="{{ console_root(request) }}admin/patches">版本</a>
     {% endif %}
+    {% if user.can("manage_pages") and not user.needs_setup %}
+    <a href="{{ console_root(request) }}admin/pages">页面</a>
+    <a href="{{ console_root(request) }}admin/tournaments">锦标赛</a>
+    {% endif %}
     {% if user.can("manage_trash") and not user.needs_setup %}
     <a href="{{ console_root(request) }}admin/trash">回收站</a>
     {% endif %}

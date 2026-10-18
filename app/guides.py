@@ -262,7 +262,9 @@ def _editable(conn: sqlite3.Connection, actor: User, guide_id: int) -> Guide:
     return found
 
 
-_SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+# A Guide's or a Page's slug: lowercase ASCII letters and digits, in
+# hyphenated runs.
+SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 
 
 def _checked_slug(conn: sqlite3.Connection, actor: User, current: Guide,
@@ -273,7 +275,7 @@ def _checked_slug(conn: sqlite3.Connection, actor: User, current: Guide,
     if not actor.can("edit_guide_slugs"):
         raise NotAllowed("只有管理员可以修改网址名。")
     slug = slug.strip()
-    if not _SLUG.fullmatch(slug):
+    if not SLUG.fullmatch(slug):
         raise Refused("网址名只能包含小写英文字母、数字和连字符，例如 vanessa-12。")
     if conn.execute("SELECT 1 FROM guides WHERE slug = ? AND id != ?",
                     (slug, current.id)).fetchone():

@@ -2,6 +2,10 @@
 {% from "site/_guides.html" import guide_list with context %}
 {% block title %}{{ t.site_name }}{% endblock %}
 {% block content %}
+  {% if lang == "en" %}
+  <p class="fallback-notice" id="no-english-text">The page you came from has no
+    English text yet.</p>
+  {% endif %}
   <h1>{{ t.site_name }}</h1>
   <h2>{{ t.newest_guides }}</h2>
   {{ guide_list(guides) }}

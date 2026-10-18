@@ -1,0 +1,34 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <p><a href="{{ console_root(request) }}{{ item.console_path }}/edit">返回编辑</a>
+    · {{ kind }} · 状态：{{ item.status_label }}</p>
+  <p>这是读者将会看到的样子（显示已保存的内容）。</p>
+  <section class="term-check" aria-labelledby="term-check">
+    <h2 id="term-check">游戏术语检查</h2>
+    {% if term_warnings %}
+    <p>下面这些不影响发布，但建议在发布前改好：</p>
+    <ul>
+      {% for warning in term_warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p>没有需要注意的游戏术语。</p>
+    {% endif %}
+  </section>
+
+  <article lang="zh-CN">
+    <h1>{{ item.title_zh or "（无标题）" }}</h1>
+    {% if meta.zh %}<p>{{ meta.zh }}</p>{% endif %}
+    {{ body_zh | safe }}
+  </article>
+
+  <hr>
+  {% if item.has_text_in("en") %}
+  <article lang="en">
+    <h1>{{ item.title_en or "(untitled)" }}</h1>
+    {% if meta.en %}<p>{{ meta.en }}</p>{% endif %}
+    {{ body_en | safe }}
+  </article>
+  {% else %}
+  <p>这个{{ kind }}没有英文版，不会出现在英文网站上。</p>
+  {% endif %}
+{% endblock %}

@@ -131,6 +131,58 @@ CREATE TABLE IF NOT EXISTS site_builds (
     started_at TEXT NOT NULL
 );
 
+-- Pages and Tournament items are written by Admins with no review, so they are
+-- only ever Draft or Published, and only app/content.py changes them.
+-- site_changed_at is when the item last changed in a way the site shows (it
+-- was Published, edited while Published, or Unpublished), for the dashboard's
+-- count of changes not on the site.
+CREATE TABLE IF NOT EXISTS pages (
+    id              INTEGER PRIMARY KEY,
+    slug            TEXT NOT NULL UNIQUE,
+    title_zh        TEXT NOT NULL DEFAULT '',
+    body_zh         TEXT NOT NULL DEFAULT '',
+    title_en        TEXT NOT NULL DEFAULT '',
+    body_en         TEXT NOT NULL DEFAULT '',
+    status          TEXT NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft', 'published')),
+    created_at      TEXT NOT NULL DEFAULT ({NOW}),
+    updated_at      TEXT NOT NULL DEFAULT ({NOW}),
+    site_changed_at TEXT
+);
+
+-- A Tournament item is an announcement or a recap; a recap may link to the
+-- announcement it follows (announcement_id), and loses the link if that is
+-- deleted. tournament_date is YYYY-MM-DD. Ids are never reused
+-- (AUTOINCREMENT), since an item's address on the site is its id.
+CREATE TABLE IF NOT EXISTS tournament_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind            TEXT NOT NULL CHECK (kind IN ('announcement', 'recap')),
+    title_zh        TEXT NOT NULL DEFAULT '',
+    body_zh         TEXT NOT NULL DEFAULT '',
+    title_en        TEXT NOT NULL DEFAULT '',
+    body_en         TEXT NOT NULL DEFAULT '',
+    tournament_date TEXT NOT NULL,
+    patch_id        INTEGER NOT NULL REFERENCES patches (id),
+    announcement_id INTEGER REFERENCES tournament_items (id) ON DELETE SET NULL,
+    status          TEXT NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft', 'published')),
+    created_at      TEXT NOT NULL DEFAULT ({NOW}),
+    updated_at      TEXT NOT NULL DEFAULT ({NOW}),
+    site_changed_at TEXT
+);
+
+-- Pages and Tournament items deleted for good after they were ever Published
+-- (kind is 'page' or 'tournament_item'), with their status and
+-- site_changed_at then, so the dashboard can tell whether the site still has
+-- them.
+CREATE TABLE IF NOT EXISTS removed_content (
+    kind            TEXT NOT NULL,
+    item_id         INTEGER NOT NULL,
+    was_published   INTEGER NOT NULL,
+    site_changed_at TEXT NOT NULL,
+    removed_at      TEXT NOT NULL DEFAULT ({NOW})
+);
+
 -- Published Guides deleted for good from the Trash. Their rows are gone, so
 -- this is how the dashboard still counts them as a change not on the site.
 CREATE TABLE IF NOT EXISTS removed_guides (

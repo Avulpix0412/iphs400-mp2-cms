@@ -1,0 +1,67 @@
+{% extends "admin/base.html" %}
+{% set path = item.console_path if item else "admin/tournaments" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  {% if item %}
+  <p>状态：{{ item.status_label }} · 更新于 {{ item.updated_at }}</p>
+  <p><a href="{{ console_root(request) }}{{ path }}/preview">预览</a>（显示已保存的内容，与读者看到的一致）
+    · <a href="{{ console_root(request) }}{{ path }}/delete">删除…</a></p>
+  {% if item.status == "published" %}
+  <form method="post" action="{{ console_root(request) }}{{ path }}/unpublish">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <p>已发布。“更新网站”后它会出现在公开网站的锦标赛栏目里。 <button type="submit">撤下</button></p>
+  </form>
+  {% endif %}
+  {% endif %}
+
+  <form method="post" action="{{ console_root(request) }}{{ path }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <fieldset>
+      <legend>类型</legend>
+      {% for value, label in kinds.items() %}
+      <label><input type="radio" name="kind" value="{{ value }}"{% if value == fields.kind %} checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+    <label>比赛日期
+      <input type="date" name="tournament_date" value="{{ fields.tournament_date }}" required>
+    </label>
+    <label>版本
+      <select name="patch_id" required>
+        {% for patch in patches %}
+        <option value="{{ patch.id }}"{% if patch.id == fields.patch_id %} selected{% endif %}>{{ patch.name }}{% if patch.is_current %}（当前版本）{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>回顾所对应的预告（可选，只用于回顾）
+      <select name="announcement_id">
+        <option value="">不关联</option>
+        {% for announcement in announcements %}
+        <option value="{{ announcement.id }}"{% if announcement.id == fields.announcement_id %} selected{% endif %}>{{ announcement.tournament_date }} {{ announcement.title_zh or "（无标题）" }}（{{ announcement.status_label }}）</option>
+        {% endfor %}
+      </select>
+    </label>
+    <fieldset>
+      <legend>中文版（发布前必须填写）</legend>
+      <label>标题
+        <input type="text" name="title_zh" value="{{ fields.title_zh }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_zh" rows="12">{{ fields.body_zh }}</textarea>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>英文版（可选；没有英文版的内容不会出现在英文网站上）</legend>
+      <label>标题
+        <input type="text" name="title_en" value="{{ fields.title_en }}">
+      </label>
+      <label>正文（Markdown）
+        <textarea name="body_en" rows="12">{{ fields.body_en }}</textarea>
+      </label>
+    </fieldset>
+
+    <button type="submit">{{ "保存草稿" if not item or item.status == "draft" else "保存" }}</button>
+    {% if item and item.status == "draft" %}
+    <button type="submit" formaction="{{ console_root(request) }}{{ path }}/publish">发布</button>
+    {% endif %}
+  </form>
+{% endblock %}
