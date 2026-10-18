@@ -9,9 +9,11 @@ table, never by the cookie alone.
 from __future__ import annotations
 
 import secrets
+from collections.abc import Callable
+from typing import Annotated
 
-from fastapi import Request
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi import Depends, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import accounts, db, settings
@@ -76,6 +78,8 @@ def console_root(request: Request) -> str:
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["pop_flashes"] = pop_flashes
 templates.env.globals["console_root"] = console_root
+templates.env.globals["submission_banned"] = accounts.SUBMISSION_BANNED
+templates.env.globals["min_password_length"] = accounts.MIN_PASSWORD_LENGTH
 
 
 def start_session(request: Request, session_id: str) -> None:
@@ -114,16 +118,32 @@ def signed_in_user(request: Request) -> accounts.User:
 
 
 class AdminRequired(Exception):
-    """Raised when an Editor reaches an Admin-only page; answered with 403."""
+    """Raised when an Editor reaches an Admin-only page; answered with a 403
+    console page, which keeps the navigation for the signed-in `user`."""
+
+    def __init__(self, user: accounts.User) -> None:
+        super().__init__()
+        self.user = user
 
 
-def admin_user(request: Request) -> accounts.User:
-    """Dependency for Admin-only pages: the signed-in Admin. Editors are
-    refused, whether they followed a link or typed the URL."""
-    user = signed_in_user(request)
-    if not user.can("manage_game"):
-        raise AdminRequired
-    return user
+# Every guard made by requires(), so a test can find every route behind one.
+ADMIN_GUARDS: set[Callable[..., accounts.User]] = set()
+
+
+def requires(capability: str) -> Callable[..., accounts.User]:
+    """A dependency for Admin-only pages: the signed-in user, if they have
+    `capability`. Anyone else is refused, whether they followed a link or
+    typed the URL. Make one per capability at import time, so FastAPI's
+    per-request cache recognises it."""
+    def guard(user: Annotated[accounts.User, Depends(signed_in_user)]) -> accounts.User:
+        if not user.can(capability):
+            raise AdminRequired(user)
+        return user
+    ADMIN_GUARDS.add(guard)
+    return guard
+
+
+admin_user = requires("manage_game")
 
 
 def home_for(user: accounts.User) -> str:
@@ -139,8 +159,11 @@ async def login_required_handler(request: Request, exc: Exception) -> RedirectRe
     return redirect("/login")
 
 
-async def admin_required_handler(request: Request, exc: Exception) -> PlainTextResponse:
-    return PlainTextResponse("只有管理员可以使用此页面。", status_code=403)
+async def admin_required_handler(request: Request, exc: Exception) -> HTMLResponse:
+    user = exc.user if isinstance(exc, AdminRequired) else None
+    return templates.TemplateResponse(
+        request, "admin/refused.html", {"title": "没有权限", "user": user},
+        status_code=403)
 
 
 async def setup_required_handler(request: Request, exc: Exception) -> RedirectResponse:

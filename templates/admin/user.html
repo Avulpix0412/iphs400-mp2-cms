@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <p><a href="{{ console_root(request) }}admin/users">← 所有用户</a></p>
+  <h1>{{ account.display_name or "（未完成首次登录设置）" }}</h1>
+  <dl>
+    <dt>登录邮箱</dt><dd>{{ account.email }}</dd>
+    <dt>角色</dt><dd>{{ roles[account.role] }}</dd>
+    <dt>状态</dt><dd>{{ states[account.state] }}{% if account.needs_setup %}（待首次登录设置）{% endif %}</dd>
+    <dt>攻略</dt><dd>已发布 {{ guide_counts.published }} · 共 {{ guide_counts.total }}</dd>
+    <dt>上次登录</dt><dd>{{ account.last_login_at[:16] if account.last_login_at else "从未登录" }}</dd>
+  </dl>
+
+  <h2>角色</h2>
+  {% if account.id == user.id %}
+  <p>不能修改自己的角色，请让另一位管理员来改。</p>
+  {% else %}
+  <form method="post" action="{{ console_root(request) }}admin/users/{{ account.id }}/role">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>角色
+      <select name="role">
+        {% for role, label in roles.items() %}
+        <option value="{{ role }}"{% if role == account.role %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">修改角色</button>
+  </form>
+  {% endif %}
+
+  {% if account.role == "editor" and account.state != "deactivated" %}
+  <h2>禁止投稿</h2>
+  {% if account.state == "submission_ban" %}
+  <p>这位编辑被禁止投稿：可以登录和编辑草稿，但不能提交审核，也不能修订已发布的攻略。</p>
+  <form method="post" action="{{ console_root(request) }}admin/users/{{ account.id }}/unban">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">解除禁止投稿</button>
+  </form>
+  {% else %}
+  <p>禁止投稿后，对方仍可登录和编辑草稿，但不能提交审核；已发布的攻略留在网站上。</p>
+  <form method="post" action="{{ console_root(request) }}admin/users/{{ account.id }}/ban">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">禁止投稿</button>
+  </form>
+  {% endif %}
+  {% endif %}
+
+  {% if account.id != user.id %}
+  <h2>重置密码</h2>
+  <p>重置后旧密码立即失效，对方会被退出登录，用临时密码登录后要重新设置自己的密码。</p>
+  <form method="post" action="{{ console_root(request) }}admin/users/{{ account.id }}/password">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>新的临时密码（至少 {{ min_password_length }} 个字符）
+      <input type="text" name="temporary_password" required minlength="{{ min_password_length }}" autocomplete="off">
+    </label>
+    <button type="submit">重置密码</button>
+  </form>
+  {% endif %}
+
+  <h2>停用账号</h2>
+  {% if account.state == "deactivated" %}
+  <p>这个账号已停用，对方无法登录。</p>
+  <form method="post" action="{{ console_root(request) }}admin/users/{{ account.id }}/reactivate">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">重新启用</button>
+  </form>
+  {% elif account.id == user.id %}
+  <p>不能停用自己的账号。</p>
+  {% else %}
+  <p>停用后对方无法登录，已发布的攻略留在网站上。</p>
+  <p><a href="{{ console_root(request) }}admin/users/{{ account.id }}/deactivate">停用账号…</a></p>
+  {% endif %}
+{% endblock %}

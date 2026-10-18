@@ -31,7 +31,7 @@ from typing import ClassVar
 from itertools import groupby
 
 from app import db, game
-from app.accounts import User
+from app.accounts import SUBMISSION_BANNED, User
 from app.rendering import highlight, render_markdown
 
 
@@ -316,8 +316,7 @@ def _check_text(fields: GuideFields | Guide | Revision) -> None:
 
 def _check_not_banned(actor: User) -> None:
     if actor.state == "submission_ban":
-        raise NotAllowed("你的账号已被禁止投稿：可以继续编辑草稿，但不能提交审核。"
-                         "如有疑问，请联系管理员。")
+        raise NotAllowed(SUBMISSION_BANNED)
 
 
 def can_submit(actor: User, guide: Guide) -> bool:
@@ -640,6 +639,7 @@ def open_revision(conn: sqlite3.Connection, actor: User, guide_id: int) -> Revis
         raise NotAllowed("只有作者本人可以修订这篇攻略。")
     if current.status != "published":
         raise Refused("只有已发布的攻略需要修订；草稿和待审核的攻略可以直接修改。")
+    _check_not_banned(actor)  # a Revision they could never Submit
     try:
         conn.execute(
             "INSERT INTO revisions (guide_id, base_updated_at, title_zh, body_zh,"
@@ -861,3 +861,22 @@ def counts(conn: sqlite3.Connection, actor: User) -> dict[str, int]:
                         " GROUP BY status", params).fetchall()
     found = {row["status"]: row["n"] for row in rows}
     return {status: found.get(status, 0) for status in STATUS_LABELS}
+
+
+@dataclass(frozen=True)
+class AuthorCounts:
+    published: int = 0
+    total: int = 0     # in any status, outside the Trash
+
+
+def counts_by_author(conn: sqlite3.Connection, actor: User) -> dict[int, AuthorCounts]:
+    """Each Author's Guides outside the Trash, for the Users page, keyed by
+    user id; an Author with none is missing."""
+    if not actor.can("manage_users"):
+        raise NotAllowed("只有管理员可以查看所有人的攻略数量。")
+    rows = conn.execute(
+        "SELECT author_id, SUM(status = 'published') AS published,"
+        f" COUNT(*) AS total FROM guides WHERE {_NOT_TRASHED} GROUP BY author_id"
+    ).fetchall()
+    return {row["author_id"]: AuthorCounts(row["published"], row["total"])
+            for row in rows}

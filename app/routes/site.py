@@ -2,21 +2,13 @@
 Readers see. Admins only."""
 from __future__ import annotations
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request
 
 from app import publish
-from app.accounts import User
-from app.web import AdminRequired, flash, redirect, signed_in_user
+from app.web import flash, redirect, requires
 
 router = APIRouter()
-
-
-def site_builder(user: Annotated[User, Depends(signed_in_user)]) -> User:
-    if not user.can("build_site"):
-        raise AdminRequired
-    return user
+site_builder = requires("build_site")
 
 
 @router.post("/admin/site-build", dependencies=[Depends(site_builder)])

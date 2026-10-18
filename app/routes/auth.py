@@ -51,7 +51,8 @@ def setup_form(request: Request,
         return redirect(home_for(user))
     return templates.TemplateResponse(
         request, "admin/setup.html",
-        {"title": "首次登录设置", "user": user, "display_name": ""})
+        {"title": "首次登录设置", "user": user,
+         "display_name": user.display_name or ""})
 
 
 @router.post("/admin/setup")

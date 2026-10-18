@@ -26,6 +26,10 @@
     .filters label { margin: 0; }
     table { border-collapse: collapse; width: 100%; }
     th, td { text-align: start; padding: .3rem .5rem; border-bottom: 1px solid var(--line); }
+    /* A table too wide for a phone scrolls sideways instead of squeezing
+       each cell to one character per line. */
+    .scroll { overflow-x: auto; }
+    .scroll th, .scroll td { white-space: nowrap; }
     /* Review note quotes in the preview: the latest round solid, earlier
        rounds faint and underlined, so they differ without colour too. */
     mark { background: #ffd43b; color: #000; }
@@ -50,6 +54,9 @@
     {% if user.can("manage_trash") and not user.needs_setup %}
     <a href="{{ console_root(request) }}admin/trash">回收站</a>
     {% endif %}
+    {% if user.can("manage_users") and not user.needs_setup %}
+    <a href="{{ console_root(request) }}admin/users">用户</a>
+    {% endif %}
     <span>{{ user.display_name or "新账号" }}（{{ "管理员" if user.role == "admin" else "编辑" }}）</span>
     <form method="post" action="{{ console_root(request) }}logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -62,6 +69,9 @@
       <p class="flash flash-{{ kind }}" role="status">{{ message }}</p>
     {% endfor %}
     {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+    {% if user and user.state == "submission_ban" and not error %}
+      <p class="flash flash-error">{{ submission_banned }}</p>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>
