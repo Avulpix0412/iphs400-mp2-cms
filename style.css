@@ -9,5 +9,10 @@ main { margin-block: 2rem; }
 .badge { display: inline-block; padding: 0 .5rem; border-radius: 1rem;
          border: 1px solid; font-size: .85em; }
 .term { font-weight: 600; }
+img { max-width: 100%; height: auto; }
+/* A Cover in a list: a small image above the item's title. */
+.guides, .tournament-items { list-style: none; padding: 0; }
+.guides li, .tournament-items li { margin-block: .75rem; }
+.guides img, .tournament-items img { display: block; width: 12rem; }
 .fallback-notice { display: none; }
 .fallback-notice:target { display: block; }
