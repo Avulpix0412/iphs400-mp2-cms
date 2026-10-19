@@ -185,17 +185,17 @@ _Avoid_: pending, draft, ready
 An Admin's decision that a Submitted Guide or Revision is not ready. It goes
 back to its writer as a Draft, with the Admin's notes. A Returned Revision
 leaves the Published Guide as it is.
-_Avoid_: reject, decline
+_Avoid_: reject (that is for Comments), decline
 
 **Review note** (审核意见):
 Part of a Return: a passage quoted from the Guide together with the Admin's
 advice on how to fix it.
-_Avoid_: comment (comments stay on Bilibili), feedback
+_Avoid_: comment (a Comment is a Reader's, shown under a Guide), feedback
 
 **Publish** (发布):
-An Admin's approval of a Submitted Guide, which makes it Published. Publishing
-does not by itself change the public site.
-_Avoid_: approve, go live
+An Admin's decision that a Submitted Guide is ready, which makes it Published.
+Publishing does not by itself change the public site.
+_Avoid_: approve (that is for Comments), go live
 
 **Unpublish** (撤下):
 An Admin taking a Published Guide off the site without deleting it. The Guide
@@ -204,9 +204,9 @@ Unpublished Page or Tournament item simply becomes a Draft again.
 _Avoid_: hide, archive, take offline
 
 **Published** (已发布):
-A Guide an Admin has approved. It will appear on the public site after the
+A Guide an Admin has Published. It will appear on the public site after the
 next Site build.
-_Avoid_: live, approved
+_Avoid_: live, approved (that is a Comment's status)
 
 **Trash** (回收站):
 Where deleted Guides go. Only Admins can see it, and they can restore a Guide
@@ -218,6 +218,38 @@ A proposed change to a Published Guide. While it waits for review the
 Published Guide stays on the site unchanged. Once published, it replaces the
 old content and the old content is not shown.
 _Avoid_: version, new version, edit
+
+**Comment** (评论):
+Something a Reader said about a Published Guide, with the Reader's name as
+they gave it. Readers have no way to comment on the site: an Admin adds the
+Comment in the Moderation queue, where it is Pending (待处理) until Approved
+or Rejected. A Comment is never edited. Only Approved Comments appear, under
+their Guide's page, after the next Site build; while the Guide is Unpublished
+or in the Trash, its Comments are off the site too. Its time is when the
+Admin added it. Pages and Tournament items have none.
+_Avoid_: reply, review, feedback, message
+
+**Comment language** (评论语言):
+Chinese or English, picked by the Admin when adding a Comment (Chinese unless
+they choose English). An Approved Comment appears only on its Guide's page in
+that language, so an English Comment needs a Guide with English text. It is
+never guessed from the text, since Chinese Readers often write with no
+Chinese characters (666, yyds); an English Comment that has some only gets a
+warning.
+_Avoid_: locale, comment translation
+
+**Moderation queue** (评论审核):
+The Admin-only console page listing every Pending Comment, where Comments are
+added, Approved and Rejected.
+_Avoid_: comment inbox, review queue (that is for Submitted Guides)
+
+**Approve** (通过):
+An Admin's decision that a Pending Comment may go on the site; the Comment's
+status is then approved (已通过). Its opposite is **Reject** (拒绝): the
+Comment never reaches the site. Either is final, and either counts as a change
+not yet on the site. Approving a Comment is not Publishing: Guides are
+Published, Comments are Approved, and neither word is used for the other.
+_Avoid_: accept, publish (that is for Guides)
 
 **Site build** (更新网站):
 Regenerating the public site from everything that is Published, and putting it
@@ -239,9 +271,15 @@ _Avoid_: local time, server time
   awaiting review. Those are now **Draft** and **Submitted**.
 - "Version" can mean the game's Patch or an edit to a Guide. Use **Patch** for
   the game and **Revision** for an edit.
-- "Publish" meant both an Admin's approval and regenerating the site. Approval
-  is **Publish**; regenerating is **Site build**. An Editor never publishes:
-  their button is Submit (提交审核).
+- "Publish" meant both an Admin's decision on a Guide and regenerating the
+  site. The decision is **Publish**; regenerating is **Site build**. An
+  Editor never publishes: their button is Submit (提交审核).
 - "Event" is a Game Term kind (事件). Tournament items are announcements and
   recaps, never "events".
 - "Card" and "Item" are the same thing. Use **Item**.
+- "Approve" could mean Publishing a Guide or letting a Comment onto the site.
+  A Guide is **Published**; a Comment is **Approved** (its status is
+  `approved`). "Reject" is only for Comments; a Guide that is not ready is
+  **Returned**.
+- "Pending" is only for a Comment awaiting a decision. A Guide awaiting
+  review is **Submitted**.

@@ -27,7 +27,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import content, db, game, guides, media, settings, times
+from app import comments, content, db, game, guides, media, settings, times
 from app.rendering import render_markdown
 
 CSS = """/* Minimal starter styles — make them yours. */
@@ -59,7 +59,7 @@ LABELS = {
            "updated": "更新于", "guides": "攻略", "tournaments": "锦标赛",
            "announcement": "预告", "recap": "回顾", "tournament_date": "比赛日期",
            "no_tournament_items": "还没有锦标赛内容。", "follows": "对应的预告：",
-           "other_language": "English"},
+           "other_language": "English", "comments": "读者评论"},
     "en": {"site_name": "The Bazaar Guides", "current_patch": "Current Patch: ",
            "newest_guides": "Newest guides", "heroes": "Heroes",
            "no_guides": "No English guides yet.", "updated": "Updated",
@@ -68,7 +68,7 @@ LABELS = {
            "tournament_date": "Tournament date",
            "no_tournament_items": "No English tournament posts yet.",
            "follows": "Announcement: ",
-           "other_language": "中文"},
+           "other_language": "中文", "comments": "Comments"},
 }
 NEWEST_ON_HOME = 10
 NO_ENGLISH_TEXT = "no-english-text"  # the id of the fallback notice
@@ -167,6 +167,7 @@ def render_site(out: Path | None = None) -> Path:
         glossary = game.glossary(conn)
         pages = content.published_pages(conn)
         tournament_items = content.published_tournament_items(conn)
+        approved_comments = comments.approved(conn)
         owners = [item.media_owner for item in [*published, *tournament_items]]
         images = {owner: media.images(conn, owner) for owner in owners}
     media.copy_files(itertools.chain(*images.values()), out / "media")
@@ -195,9 +196,11 @@ def render_site(out: Path | None = None) -> Path:
         for guide in listed:
             # Only English can be missing, since Chinese text is required. The
             # switch then leads to the Hero's English page, whose notice shows
-            # only when arrived at through this link.
+            # only when arrived at through this link. Each language's page
+            # shows the Approved Comments in that language.
             write.page(f"{lang}/guides/{guide.slug}/", "site/guide.html",
                        lang=lang, guide=guide,
+                       comments=approved_comments.get((guide.id, lang), []),
                        switch_to=None if guide.has_text_in("en")
                        else f"heroes/{guide.hero_slug}/#{NO_ENGLISH_TEXT}")
         write_tournaments(write, lang, tournament_items)
@@ -264,9 +267,9 @@ def changes_not_on_site(conn: sqlite3.Connection) -> int:
     one): Published Guides edited since, Guides Unpublished since, which the
     next build leaves out, Published Guides moved to or restored from the
     Trash since, and the Page and Tournament changes content.changes_since
-    counts."""
+    counts, and Comments Approved or Rejected since."""
     last = conn.execute("SELECT MAX(started_at) FROM site_builds").fetchone()[0] or ""
     changed = {guide.id for guide in guides.published(conn) if guide.updated_at > last}
     return (len(changed | guides.unpublished_since(conn, last)
                 | guides.trash_changes_since(conn, last))
-            + content.changes_since(conn, last))
+            + content.changes_since(conn, last) + comments.changes_since(conn, last))
