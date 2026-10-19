@@ -49,7 +49,7 @@ uv run cms publish    # writes site/; it prints a preview command
 
 ## Generative AI Use Statement
 
-All of the code in this project was written by Claude Vode using the pipeline of grill, spec, tickets, and  `/implement`, `/tdd`, `/code-review` and `/pr` for each ticket. Except for part of the session 01 using Sonnect 5.5 medium effort, all of the rest was done by Opus 5.5 high effort. I made the decisions in the grill, read all the review, and either confirmed or rejected Claude’s suggestions before anything was merged. I worked in two languages, because the project is in English, sometimes when the feedback is long and I don’t fully understand what it was saying, I will send it to a different session to let it explain to me to make sure I understand the context, then I will work with it and send my answer back. It also helped me collected the evidences and resources for my report and this statement, and based on the information, I wrote the report and this statement in my own word.
+All of the code in this project was written by Claude Code using the pipeline of grill, spec, tickets, and  `/implement`, `/tdd`, `/code-review` and `/pr` for each ticket. Except for part of the session 01 using Sonnet 5.5 medium effort, all of the rest was done by Opus 5.5 high effort. I made the decisions in the grill, read all the review, and either confirmed or rejected Claude’s suggestions before anything was merged. I worked in two languages, because the project is in English, sometimes when the feedback is long and I don’t fully understand what it was saying, I will send it to a different session to let it explain to me to make sure I understand the context, then I will work with it and send my answer back. It also helped me collected the evidences and resources for my report and this statement, and based on the information, I wrote the report and this statement in my own word.
 
 Below are the two prompts that I sent
 
@@ -77,6 +77,6 @@ Skills:
 
 | Provider | Models | Ledger sessions | Ledger rows | Dates |
 |---|---|---|---|---|
-| Anthropic | Opus 5.5, Sonnet 5.5 | 22 | 130 (Opus 119, Sonnet 11) | 2026-10-12 to 2026-10-18 |
+| Anthropic | Opus 5.5, Sonnet 5.5 | 24 | 138 (Opus 127, Sonnet 11) | 2026-10-12 to 2026-10-18 |
 
 No session used a non-Anthropic base URL, so no commit carries a `Backend:` trailer.

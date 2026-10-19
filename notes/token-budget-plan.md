@@ -66,3 +66,10 @@ T04 and #18. Doing more than about three tickets in one sitting could hit the
   update this plan before the next one.
 - Keep writing the ticket id into `.claude/state/phase` so the ledger stays
   labelled.
+
+## Correction (2026-10-18)
+
+The 5-hour figures for T01 and T03 in the table above are wrong. Recomputed
+from `notes/usage-ledger.csv`, they are **8** (not 10) for T01 and **21** (not
+24) for T03. The table is left as originally written; the report uses the
+corrected numbers.
