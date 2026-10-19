@@ -11,4 +11,15 @@
     </p>
     {{ guide|localized("body", lang)|markdown(lang, images(guide))|safe }}
   </article>
+  {% if comments %}
+  <section class="comments">
+    <h2>{{ t.comments }}</h2>
+    {% for comment in comments %}
+    <article class="comment">
+      <p><strong>{{ comment.reader_name }}</strong> · {{ comment.created_at|beijing_time }}</p>
+      {{ comment.body|markdown(lang)|safe }}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
 {% endblock %}

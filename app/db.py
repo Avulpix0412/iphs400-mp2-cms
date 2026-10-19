@@ -204,6 +204,24 @@ CREATE TABLE IF NOT EXISTS removed_guides (
     guide_id   INTEGER NOT NULL,
     removed_at TEXT NOT NULL DEFAULT ({NOW})
 );
+
+-- A Reader's Comment on a Guide, added by an Admin in the Moderation queue
+-- (added in #37; see app/comments.py). lang is the Comment language the Admin
+-- picked. decided_at is when it was Accepted or Rejected, for the dashboard's
+-- count of changes not on the site.
+CREATE TABLE IF NOT EXISTS comments (
+    id          INTEGER PRIMARY KEY,
+    guide_id    INTEGER NOT NULL REFERENCES guides (id) ON DELETE CASCADE,
+    reader_name TEXT NOT NULL CHECK (reader_name != ''),
+    body        TEXT NOT NULL CHECK (body != ''),
+    lang        TEXT NOT NULL DEFAULT 'zh' CHECK (lang IN ('zh', 'en')),
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'accepted', 'rejected')),
+    created_at  TEXT NOT NULL DEFAULT ({NOW}),
+    decided_at  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS comments_by_guide ON comments (guide_id);
 """
 
 # Columns added to a table after it was first created: (table, column, type).

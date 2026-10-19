@@ -67,6 +67,9 @@
     <a href="{{ console_root(request) }}admin/pages">页面</a>
     <a href="{{ console_root(request) }}admin/tournaments">锦标赛</a>
     {% endif %}
+    {% if user.can("moderate_comments") and not user.needs_setup %}
+    <a href="{{ console_root(request) }}admin/comments">评论审核</a>
+    {% endif %}
     {% if user.can("manage_trash") and not user.needs_setup %}
     <a href="{{ console_root(request) }}admin/trash">回收站</a>
     {% endif %}

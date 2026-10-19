@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <h1>评论审核</h1>
+  <p>读者在别处留下的评论，由管理员添加到这里。通过的评论在下次更新网站后，出现在对应攻略的页面下面；拒绝的评论不会上网站。评论添加后不能修改。</p>
+
+  <h2>待处理</h2>
+  {% for comment in comments %}
+    <article class="comment">
+      <p><strong>{{ comment.reader_name }}</strong>
+        · 《{{ comment.guide_title_zh or "（无标题）" }}》
+        · {{ comment.language_label }}
+        · {{ comment.created_at|beijing_time }}</p>
+      {% if comment.language_warning %}<p class="flash flash-notice">{{ comment.language_warning }}</p>{% endif %}
+      <div>{{ rendered[comment.id]|safe }}</div>
+      <div class="decisions">
+        <form method="post" action="{{ console_root(request) }}admin/comments/{{ comment.id }}/accept">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+          <button type="submit">通过</button>
+        </form>
+        <form method="post" action="{{ console_root(request) }}admin/comments/{{ comment.id }}/reject">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+          <button type="submit">拒绝</button>
+        </form>
+      </div>
+    </article>
+  {% else %}
+    <p>没有待处理的评论。</p>
+  {% endfor %}
+
+  <h2>添加评论</h2>
+  {% if guides %}
+  <form method="post" action="{{ console_root(request) }}admin/comments">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label>攻略
+      <select name="guide_id" required>
+        {% for guide in guides %}
+        <option value="{{ guide.id }}"{% if new.guide_id == guide.id|string %} selected{% endif %}>{{ guide.title_zh or "（无标题）" }}{% if not guide.has_text_in("en") %}（只有中文版）{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>评论语言
+      <select name="lang">
+        {% for lang, label in languages.items() %}
+        <option value="{{ lang }}"{% if lang == (new.lang or "zh") %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p>通过后，评论只出现在攻略这种语言的页面上。只有中文版的攻略只能加中文评论。</p>
+    <label>读者的名字
+      <input type="text" name="reader_name" value="{{ new.reader_name }}" required maxlength="30">
+    </label>
+    <label>评论内容（Markdown）
+      <textarea name="body" rows="5" required>{{ new.body }}</textarea>
+    </label>
+    <button type="submit">添加为待处理</button>
+  </form>
+  {% else %}
+    <p>还没有已发布的攻略，评论只能加在已发布的攻略下面。</p>
+  {% endif %}
+{% endblock %}
