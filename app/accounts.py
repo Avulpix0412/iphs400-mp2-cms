@@ -60,7 +60,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
         "manage_pages",        # Pages and Tournament items
         "build_site",          # 更新网站: the Site build and deploy
         "manage_users",        # the Users page and everything on it
-        "moderate_comments",   # the Moderation queue: add, Accept, Reject
+        "moderate_comments",   # the Moderation queue: add, Approve, Reject
     }),
     "editor": frozenset(),
 }

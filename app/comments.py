@@ -1,8 +1,8 @@
 """Comments (评论): what Readers said about a Published Guide.
 
 There is no public comment form. Readers comment elsewhere, and an Admin adds
-a Comment in the Moderation queue as Pending, then Accepts or Rejects it
-there. A Comment is never edited. Only Accepted Comments reach the site, at
+a Comment in the Moderation queue as Pending, then Approves or Rejects it
+there. A Comment is never edited. Only Approved Comments reach the site, at
 the next Site build, under their Guide's page.
 
 Each Comment has a Comment language, Chinese or English, which the Admin
@@ -43,7 +43,7 @@ class NotFound(Refused):
     """No such Comment, or no such Published Guide to add one to."""
 
 
-STATUS_LABELS = {"pending": "待处理", "accepted": "已通过", "rejected": "已拒绝"}
+STATUS_LABELS = {"pending": "待处理", "approved": "已通过", "rejected": "已拒绝"}
 LANGUAGES = {"zh": "中文", "en": "英文"}  # the first is the default
 
 # CJK Unified Ideographs and Extension A, as tried in the P2 prototype
@@ -161,10 +161,10 @@ def _decide(conn: sqlite3.Connection, actor: User, comment_id: int,
     return _existing(conn, comment_id)
 
 
-def accept(conn: sqlite3.Connection, actor: User, comment_id: int) -> Comment:
-    """Accept a Pending Comment: it appears under its Guide after the next
+def approve(conn: sqlite3.Connection, actor: User, comment_id: int) -> Comment:
+    """Approve a Pending Comment: it appears under its Guide after the next
     Site build."""
-    return _decide(conn, actor, comment_id, "accepted")
+    return _decide(conn, actor, comment_id, "approved")
 
 
 def reject(conn: sqlite3.Connection, actor: User, comment_id: int) -> Comment:
@@ -172,10 +172,10 @@ def reject(conn: sqlite3.Connection, actor: User, comment_id: int) -> Comment:
     return _decide(conn, actor, comment_id, "rejected")
 
 
-def accepted(conn: sqlite3.Connection) -> dict[tuple[int, str], list[Comment]]:
-    """Every Accepted Comment, by (Guide id, Comment language), oldest first:
+def approved(conn: sqlite3.Connection) -> dict[tuple[int, str], list[Comment]]:
+    """Every Approved Comment, by (Guide id, Comment language), oldest first:
     all the Site build may read. It acts for no one, so it needs no user."""
-    rows = conn.execute(f"{_SELECT} AND comments.status = 'accepted'"
+    rows = conn.execute(f"{_SELECT} AND comments.status = 'approved'"
                         " ORDER BY comments.created_at, comments.id")
     found: dict[tuple[int, str], list[Comment]] = {}
     for row in rows:
@@ -185,7 +185,7 @@ def accepted(conn: sqlite3.Connection) -> dict[tuple[int, str], list[Comment]]:
 
 
 def changes_since(conn: sqlite3.Connection, since: str) -> int:
-    """How many Comments were Accepted or Rejected after `since`. A Rejected
+    """How many Comments were Approved or Rejected after `since`. A Rejected
     one changes nothing on the site, but still counts, as does one whose
     Guide has since gone to the Trash: it may count one the site never had,
     but never misses one."""

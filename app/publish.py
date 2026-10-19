@@ -167,7 +167,7 @@ def render_site(out: Path | None = None) -> Path:
         glossary = game.glossary(conn)
         pages = content.published_pages(conn)
         tournament_items = content.published_tournament_items(conn)
-        accepted_comments = comments.accepted(conn)
+        approved_comments = comments.approved(conn)
         owners = [item.media_owner for item in [*published, *tournament_items]]
         images = {owner: media.images(conn, owner) for owner in owners}
     media.copy_files(itertools.chain(*images.values()), out / "media")
@@ -197,10 +197,10 @@ def render_site(out: Path | None = None) -> Path:
             # Only English can be missing, since Chinese text is required. The
             # switch then leads to the Hero's English page, whose notice shows
             # only when arrived at through this link. Each language's page
-            # shows the Accepted Comments in that language.
+            # shows the Approved Comments in that language.
             write.page(f"{lang}/guides/{guide.slug}/", "site/guide.html",
                        lang=lang, guide=guide,
-                       comments=accepted_comments.get((guide.id, lang), []),
+                       comments=approved_comments.get((guide.id, lang), []),
                        switch_to=None if guide.has_text_in("en")
                        else f"heroes/{guide.hero_slug}/#{NO_ENGLISH_TEXT}")
         write_tournaments(write, lang, tournament_items)
@@ -267,7 +267,7 @@ def changes_not_on_site(conn: sqlite3.Connection) -> int:
     one): Published Guides edited since, Guides Unpublished since, which the
     next build leaves out, Published Guides moved to or restored from the
     Trash since, and the Page and Tournament changes content.changes_since
-    counts, and Comments Accepted or Rejected since."""
+    counts, and Comments Approved or Rejected since."""
     last = conn.execute("SELECT MAX(started_at) FROM site_builds").fetchone()[0] or ""
     changed = {guide.id for guide in guides.published(conn) if guide.updated_at > last}
     return (len(changed | guides.unpublished_since(conn, last)

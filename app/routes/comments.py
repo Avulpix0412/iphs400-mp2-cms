@@ -71,12 +71,12 @@ async def add_comment(request: Request,
     return redirect(QUEUE)
 
 
-@router.post(QUEUE + "/{comment_id}/accept")
-def accept(request: Request, comment_id: int,
+@router.post(QUEUE + "/{comment_id}/approve")
+def approve(request: Request, comment_id: int,
            user: Annotated[User, Depends(comment_moderator)]):
     try:
         with db.connect() as conn:
-            comments.accept(conn, user, comment_id)
+            comments.approve(conn, user, comment_id)
     except comments.Refused as refused:
         return queue_page(request, user, error=refused.message,
                           status_code=status_for(refused))

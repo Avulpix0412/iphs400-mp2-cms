@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS removed_guides (
 
 -- A Reader's Comment on a Guide, added by an Admin in the Moderation queue
 -- (added in #37; see app/comments.py). lang is the Comment language the Admin
--- picked. decided_at is when it was Accepted or Rejected, for the dashboard's
+-- picked. decided_at is when it was Approved or Rejected, for the dashboard's
 -- count of changes not on the site.
 CREATE TABLE IF NOT EXISTS comments (
     id          INTEGER PRIMARY KEY,
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS comments (
     body        TEXT NOT NULL CHECK (body != ''),
     lang        TEXT NOT NULL DEFAULT 'zh' CHECK (lang IN ('zh', 'en')),
     status      TEXT NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending', 'accepted', 'rejected')),
+                CHECK (status IN ('pending', 'approved', 'rejected')),
     created_at  TEXT NOT NULL DEFAULT ({NOW}),
     decided_at  TEXT
 );

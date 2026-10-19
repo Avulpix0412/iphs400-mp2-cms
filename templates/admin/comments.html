@@ -13,7 +13,7 @@
       {% if comment.language_warning %}<p class="flash flash-notice">{{ comment.language_warning }}</p>{% endif %}
       <div>{{ rendered[comment.id]|safe }}</div>
       <div class="decisions">
-        <form method="post" action="{{ console_root(request) }}admin/comments/{{ comment.id }}/accept">
+        <form method="post" action="{{ console_root(request) }}admin/comments/{{ comment.id }}/approve">
           <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
           <button type="submit">通过</button>
         </form>

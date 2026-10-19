@@ -3,10 +3,10 @@ HTTP; Seam 2: the files the Site build writes). Each test is named after the
 acceptance step it checks.
 
 An Admin adds a Reader's Comment in the Moderation queue, in the Comment
-language they pick (Chinese unless they choose English), and Accepts or
-Rejects it there. Only Accepted Comments reach the site, under their Guide's
-page in their own language tree. The issue's "approved" is Accepted here (see
-CONTEXT.md: "approve" belongs to Publish).
+language they pick (Chinese unless they choose English), and Approves or
+Rejects it there. Only Approved Comments reach the site, under their Guide's
+page in their own language tree. Approving a Comment (its button is 通过)
+is not Publishing a Guide (see CONTEXT.md).
 """
 from __future__ import annotations
 
@@ -63,17 +63,17 @@ def default_language(queue: str) -> str:
 
 
 def decision_buttons(queue: str) -> dict[str, list[str]]:
-    """The Comment ids each of the queue's buttons (accept, reject) is for."""
-    found: dict[str, list[str]] = {"accept": [], "reject": []}
+    """The Comment ids each of the queue's buttons (approve, reject) is for."""
+    found: dict[str, list[str]] = {"approve": [], "reject": []}
     for comment_id, decision in re.findall(
-            r'<form method="post" action="(?:\.\./)*admin/comments/(\d+)/(accept|reject)"',
+            r'<form method="post" action="(?:\.\./)*admin/comments/(\d+)/(approve|reject)"',
             queue):
         found[decision].append(comment_id)
     return found
 
 
 def decide(c: TestClient, comment_id: str, decision: str):
-    """Press a Comment's accept or reject button in the queue."""
+    """Press a Comment's approve or reject button in the queue."""
     token = csrf_token(c.get(QUEUE).text)
     return c.post(f"{QUEUE}/{comment_id}/{decision}", data={"csrf_token": token},
                   follow_redirects=False)
@@ -115,33 +115,33 @@ def test_step1_the_comments_table_stores_reader_name_body_status_guide_and_time(
     assert "阿强" in queue and "船真的好用。" in queue and "瓦妮莎海盗流" in queue
 
 
-def test_step2_the_queue_adds_pending_comments_and_accepts_or_rejects_each_one(
+def test_step2_the_queue_adds_pending_comments_and_approves_or_rejects_each_one(
         admin, slug):
     assert add_comment(admin, slug, body="第一条").status_code == 303
     assert add_comment(admin, slug, body="第二条").status_code == 303
     queue = admin.get(QUEUE).text
     assert "第一条" in queue and "第二条" in queue
     first, second = (str(row["id"]) for row in comment_rows())
-    assert decision_buttons(queue) == {"accept": [first, second],
+    assert decision_buttons(queue) == {"approve": [first, second],
                                        "reject": [first, second]}
 
-    response = decide(admin, first, "accept")
+    response = decide(admin, first, "approve")
     assert response.status_code == 303 and response.headers["location"] == QUEUE
     response = decide(admin, second, "reject")
     assert response.status_code == 303 and response.headers["location"] == QUEUE
-    assert [row["status"] for row in comment_rows()] == ["accepted", "rejected"]
+    assert [row["status"] for row in comment_rows()] == ["approved", "rejected"]
 
     queue = admin.get(QUEUE).text
     assert "第一条" not in queue and "第二条" not in queue
-    assert decision_buttons(queue) == {"accept": [], "reject": []}
+    assert decision_buttons(queue) == {"approve": [], "reject": []}
     # A Comment is decided once, and never edited.
     assert decide(admin, first, "reject").status_code == 400
-    assert decide(admin, "999", "accept").status_code == 404
+    assert decide(admin, "999", "approve").status_code == 404
     assert admin.get(f"{QUEUE}/{first}/edit").status_code == 404
     assert decide(admin, first, "edit").status_code == 404
 
 
-def test_step3_a_pending_comment_is_left_out_and_appears_once_accepted_and_built(
+def test_step3_a_pending_comment_is_left_out_and_appears_once_approved_and_built(
         admin, slug):
     add_comment(admin, slug, reader_name="阿强", body="船真的好用。")
     [row] = comment_rows()
@@ -152,7 +152,7 @@ def test_step3_a_pending_comment_is_left_out_and_appears_once_accepted_and_built
     assert "船真的好用。" not in guide_page(slug)
     assert "阿强" not in guide_page(slug)
 
-    decide(admin, comment_id, "accept")
+    decide(admin, comment_id, "approve")
     assert "船真的好用。" not in guide_page(slug)  # not until the next Site build
     assert press_update_site(admin).status_code == 303
     html = guide_page(slug)
@@ -165,16 +165,16 @@ def test_step3_a_pending_comment_is_left_out_and_appears_once_accepted_and_built
 def test_step4_a_rejected_comment_is_left_out_of_the_site_build(admin, slug):
     add_comment(admin, slug, body="广告：加群领福利")
     add_comment(admin, slug, body="有用的评论", lang="en")
-    rejected, accepted = (str(row["id"]) for row in comment_rows())
+    rejected, approved = (str(row["id"]) for row in comment_rows())
     decide(admin, rejected, "reject")
-    decide(admin, accepted, "accept")
+    decide(admin, approved, "approve")
     assert press_update_site(admin).status_code == 303
     site = "\n".join(file.read_text() for file in settings.SITE.rglob("*.html"))
     assert "广告：加群领福利" not in site
     assert "有用的评论" in guide_page(slug, "en")
 
 
-def test_step3_accepting_or_rejecting_counts_as_a_change_not_on_the_site(
+def test_step3_approving_or_rejecting_counts_as_a_change_not_on_the_site(
         admin, slug):
     add_comment(admin, slug, body="第一条")
     add_comment(admin, slug, body="第二条")
@@ -182,7 +182,7 @@ def test_step3_accepting_or_rejecting_counts_as_a_change_not_on_the_site(
     assert press_update_site(admin).status_code == 303
     assert pending_changes(admin) == "网站已是最新"  # adding one changes nothing yet
 
-    decide(admin, first, "accept")
+    decide(admin, first, "approve")
     assert pending_changes(admin) == "1 项更改尚未更新到网站"
     decide(admin, second, "reject")
     assert pending_changes(admin) == "2 项更改尚未更新到网站"
@@ -228,7 +228,7 @@ def test_step2_english_picked_for_text_with_chinese_warns_and_keeps_the_choice(
     assert admin.get(QUEUE).text.count("选了英文，但内容里有汉字") == 1
 
     for row in comment_rows():
-        decide(admin, str(row["id"]), "accept")
+        decide(admin, str(row["id"]), "approve")
     assert press_update_site(admin).status_code == 303
     assert "GG 瓦姐 yyds" in guide_page(slug, "en")
     assert "GG 瓦姐 yyds" not in guide_page(slug, "zh")
@@ -250,7 +250,7 @@ def test_step5_a_comment_with_the_d4_payload_runs_neither_in_the_queue_nor_the_s
     assert "window.__xss" not in queue
 
     [row] = comment_rows()
-    decide(admin, str(row["id"]), "accept")
+    decide(admin, str(row["id"]), "approve")
     assert press_update_site(admin).status_code == 303
     html = guide_page(slug)
     assert "<strong>真香</strong>" in html
@@ -266,7 +266,7 @@ def test_step6_every_queue_form_carries_a_csrf_token_and_a_post_without_it_is_re
     forms = re.findall(r'<form method="post" action="([^"]*admin/comments[^"]*)">(.*?)</form>',
                        queue, re.DOTALL)
     actions = sorted(action.removeprefix("../") for action, _ in forms)
-    assert actions == ["admin/comments", f"admin/comments/{row['id']}/accept",
+    assert actions == ["admin/comments", f"admin/comments/{row['id']}/approve",
                        f"admin/comments/{row['id']}/reject"]
     for _, body in forms:
         assert re.search(r'<input type="hidden" name="csrf_token" value="[^"]+">', body)
@@ -274,7 +274,7 @@ def test_step6_every_queue_form_carries_a_csrf_token_and_a_post_without_it_is_re
     # Each POST replayed without its token, and with a forged one.
     add_fields = {"guide_id": guide_id(slug), "reader_name": "重放", "body": "重放的评论",
                   "lang": "zh"}
-    for path, fields in [(QUEUE, add_fields), (f"{QUEUE}/{row['id']}/accept", {}),
+    for path, fields in [(QUEUE, add_fields), (f"{QUEUE}/{row['id']}/approve", {}),
                          (f"{QUEUE}/{row['id']}/reject", {})]:
         for token in [{}, {"csrf_token": "forged"}]:
             response = admin.post(path, data=fields | token, follow_redirects=False)
@@ -347,7 +347,7 @@ def test_step1_a_guide_deleted_for_good_takes_its_comments_with_it(admin, editor
     delete(admin, edit_page)
     # In the Trash, the Guide and its Comments are gone from the queue.
     assert "要删除的攻略" not in admin.get(QUEUE).text
-    assert decide(admin, str(row["id"]), "accept").status_code == 404
+    assert decide(admin, str(row["id"]), "approve").status_code == 404
     token = csrf_token(admin.get("/admin/trash").text)
     response = admin.post(f"/admin/trash/{guide}/delete", data={"csrf_token": token},
                           follow_redirects=False)
