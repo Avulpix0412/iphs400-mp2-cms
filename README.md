@@ -49,6 +49,16 @@ uv run cms publish    # writes site/; it prints a preview command
 
 ## Generative AI Use Statement
 
+All of the code in this project was written by Claude Vode using the pipeline of grill, spec, tickets, and  `/implement`, `/tdd`, `/code-review` and `/pr` for each ticket. Except for part of the session 01 using Sonnect 5.5 medium effort, all of the rest was done by Opus 5.5 high effort. I made the decisions in the grill, read all the review, and either confirmed or rejected Claude’s suggestions before anything was merged. I worked in two languages, because the project is in English, sometimes when the feedback is long and I don’t fully understand what it was saying, I will send it to a different session to let it explain to me to make sure I understand the context, then I will work with it and send my answer back. It also helped me collected the evidences and resources for my report and this statement, and based on the information, I wrote the report and this statement in my own word.
+
+Below are the two prompts that I sent
+
+1. On the budget plan (session 12): "If I hit the 5 hour limit, I'll just upgrade my plan, because I have other projects to work with Claude code, such as the project for IPHS 484 and I notice that opus 5.5 can de better job than sonnet 5, so it is necessary to stay in opus 5.5."
+2. On one-character Chinese nicknames in T07 (session 16): "single character nickname in Chinese is rare but some people would use, so I think it is better (1) When an Admin records a one character Chinese nickname, show a notice on the term page that it will match every occurrence of that character and may cause many warnings. The Admin can still save it. (2) In the preview, show each unmarked nickname as one warning with a count, instead of one warning per occurrence."
+
+
+One of the model failure is that in T08 (#9, session 17), Claude skipped the test-first step of `/tdd`. Its own summary said "most Tournament tests passed the first time they ran, because I wrote that code in one go." The tests was passed, and `/code-review` only reads the diff, so it would not been noticed, but Claude reported it to me and It then broke the recap link on purpose to prove the matching tests could fail, and I accepted that repair but decided to mention it later in the report or AI statment because I think it is a perfect example. 
+
 Models (all through Anthropic):
 
 - Claude Opus 5.5 (`claude-opus-5-5`): every session.
