@@ -47,7 +47,7 @@ STATUS_LABELS = {"pending": "待处理", "approved": "已通过", "rejected": "�
 LANGUAGES = {"zh": "中文", "en": "英文"}  # the first is the default
 
 # CJK Unified Ideographs and Extension A, as tried in the P2 prototype
-# (docs/handoff/11_prototype-comment-language_20261019.md).
+# (branch prototype-comment-language, commit c335771).
 _CHINESE = re.compile("[\u3400-\u4dbf\u4e00-\u9fff]")
 
 MAX_READER_NAME_LENGTH = 30

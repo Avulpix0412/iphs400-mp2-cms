@@ -13,23 +13,16 @@ from __future__ import annotations
 import re
 import sqlite3
 from contextlib import closing
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import settings
-from app.publish import render_site
 from conftest import csrf_token
 from test_t03_guides import admin, editor  # noqa: F401
 from test_t04_site_build import page, pending_changes, press_update_site, published_guide
 
 QUEUE = "/admin/comments"
-
-
-@pytest.fixture
-def site(tmp_path) -> Path:
-    return tmp_path / "site"
 
 
 @pytest.fixture
@@ -333,17 +326,15 @@ def test_step2_the_queue_links_relatively_and_its_links_work(admin, slug):
 
 
 def test_step1_a_guide_deleted_for_good_takes_its_comments_with_it(admin, editor):
-    from test_t03_guides import new_guide, act
+    from test_t03_guides import act, new_guide, slug_of
     from test_t06_revisions_trash import delete
 
     edit_page = new_guide(admin, title_zh="要删除的攻略")
     act(admin, edit_page, "publish")
-    guide = edit_page.split("/")[3]
-    token = csrf_token(admin.get(QUEUE).text)
-    admin.post(QUEUE, data={"csrf_token": token, "guide_id": guide, "lang": "zh",
-                            "reader_name": "读者", "body": "评论"})
-    assert len(comment_rows()) == 1
+    slug = slug_of(admin, edit_page)
+    assert add_comment(admin, slug).status_code == 303
     [row] = comment_rows()
+    guide = guide_id(slug)
     delete(admin, edit_page)
     # In the Trash, the Guide and its Comments are gone from the queue.
     assert "要删除的攻略" not in admin.get(QUEUE).text

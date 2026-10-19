@@ -185,7 +185,7 @@ _Avoid_: pending, draft, ready
 An Admin's decision that a Submitted Guide or Revision is not ready. It goes
 back to its writer as a Draft, with the Admin's notes. A Returned Revision
 leaves the Published Guide as it is.
-_Avoid_: reject, decline
+_Avoid_: reject (that is for Comments), decline
 
 **Review note** (审核意见):
 Part of a Return: a passage quoted from the Guide together with the Admin's
@@ -272,8 +272,8 @@ _Avoid_: local time, server time
 - "Version" can mean the game's Patch or an edit to a Guide. Use **Patch** for
   the game and **Revision** for an edit.
 - "Publish" meant both an Admin's decision on a Guide and regenerating the
-  site. The decision is **Publish**; regenerating is **Site build**. An Editor never publishes:
-  their button is Submit (提交审核).
+  site. The decision is **Publish**; regenerating is **Site build**. An
+  Editor never publishes: their button is Submit (提交审核).
 - "Event" is a Game Term kind (事件). Tournament items are announcements and
   recaps, never "events".
 - "Card" and "Item" are the same thing. Use **Item**.
