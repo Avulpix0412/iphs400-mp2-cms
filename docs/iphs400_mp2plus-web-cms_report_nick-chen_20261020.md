@@ -11,7 +11,7 @@ Live site: https://avulpix0412.github.io/iphs400-mp2-cms/
 | P2 | docs/handoff/11_prototype-comment-language_20261019.md; branch prototype-comment-language; decision in app/comments.py |
 | P3 | CONTEXT.md Decisions table; docs/adr/ADR-003-hero-slug-is-fixed.md |
 | S2 | tests/test_login_hardening.py; fixture login_clock in tests/conftest.py |
-| P4 | before: commit 19a2b59; after: commit TBD; see the P4 section |
+| P4 | before: commit 19a2b59; after: commit bf6433c; see the P4 section |
 
 F6: left broken: Comments have to be entered by an Admin and then approved by an Admin, which is an extra step when there is only one Admin; real reader comments need the console to be online.
 
