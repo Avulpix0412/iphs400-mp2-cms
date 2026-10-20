@@ -12,6 +12,11 @@ its deploy step is replaced, so no test ever pushes to gh-pages.
 """
 from __future__ import annotations
 
+import os
+
+# A CMS_ENV exported in the shell must not change how the app imports.
+os.environ.pop("CMS_ENV", None)
+
 import re
 
 import pytest
