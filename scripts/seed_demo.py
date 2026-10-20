@@ -16,6 +16,9 @@ accounts, Heroes, Patches and Game Terms alone (even ones an Admin has edited
 since), and adds no Guides, Pages or Tournament items once any of that kind
 exist.
 
+It refuses to run unless CMS_ENV is development (or unset): production makes
+its one Admin from CMS_ADMIN_EMAIL and CMS_ADMIN_PASSWORD at startup instead.
+
 The rubric expects this to run clean on a fresh clone with .env.example values
 (item E4), because the database itself is never committed.
 """
@@ -152,6 +155,11 @@ def _seed_user(conn: sqlite3.Connection, role: str) -> accounts.User:
 
 def main() -> int:
     envfile.load()
+    if settings.environment(os.environ) != "development":
+        print(f"CMS_ENV is {settings.environment(os.environ)}: the demo data and "
+              "its known logins are for development only, so nothing was created.",
+              file=sys.stderr)
+        return 1
     missing = [var for *_, var in DEMO_USERS if not os.environ.get(var)]
     if missing:
         print(f"Set {' and '.join(missing)} in .env (copy .env.example), then run "

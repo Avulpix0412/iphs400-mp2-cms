@@ -47,6 +47,39 @@ To build the public site from what is published:
 uv run cms publish    # writes site/; it prints a preview command
 ```
 
+## Production
+
+Production still runs on your own computer: the admin console is never put on
+the public internet, and Readers only ever see the static site. What
+`CMS_ENV=production` changes is that the console refuses to run with a known
+secret or with demo logins.
+
+| Variable | In production |
+|---|---|
+| `CMS_ENV` | `production` (`development`, or unset, keeps the demo behaviour) |
+| `CMS_SECRET_KEY` | required; a long random value, not `dev-only-not-for-production` or the `.env.example` value |
+| `CMS_ADMIN_EMAIL` | required; the first Admin's login |
+| `CMS_ADMIN_PASSWORD` | required; the first Admin's temporary password, not the `.env.example` value |
+| `CMS_DATABASE` | the database file; use a new one, not your demo `cms.db` |
+| `CMS_SITE_TITLE`, `CMS_BASE_PATH`, `CMS_MEDIA` | as in development |
+
+Make a secret key with
+`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`, put the values
+in `.env` (or set them on the command line, which wins over `.env`), and start
+the console with:
+
+```bash
+CMS_ENV=production uv run cms serve
+```
+
+If a required variable is missing or still a default, `cms serve` stops before
+starting and names it. On a database with no Admin, startup creates one from
+`CMS_ADMIN_EMAIL` and `CMS_ADMIN_PASSWORD`; later starts leave the accounts
+alone. The first login with that password goes to the first-login setup page, where
+the Admin chooses a Display name and a new password, so `CMS_ADMIN_PASSWORD` stops
+working after that. `scripts/seed_demo.py` refuses to run in production, so the
+demo accounts never exist there; the Admin invites Editors from the Users page.
+
 ## Generative AI Use Statement
 
 All of the code in this project was written by Claude Code using the pipeline of grill, spec, tickets, and  `/implement`, `/tdd`, `/code-review` and `/pr` for each ticket. Except for part of the session 01 using Sonnet 5.5 medium effort, all of the rest was done by Opus 5.5 high effort. I made the decisions in the grill, read all the review, and either confirmed or rejected Claude’s suggestions before anything was merged. I worked in two languages, because the project is in English, sometimes when the feedback is long and I don’t fully understand what it was saying, I will send it to a different session to let it explain to me to make sure I understand the context, then I will work with it and send my answer back. It also helped me collected the evidences and resources for my report and this statement, and based on the information, I wrote the report and this statement in my own word.
