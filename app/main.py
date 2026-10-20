@@ -6,16 +6,21 @@ here. Keep this file small.
 """
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends, FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import settings, web
+from app import accounts, settings, web
 from app.routes import (auth, comments, dashboard, game, guides, pages, site,
                         tournaments, trash, users)
 from app.web import templates
 
 
 def create_app() -> FastAPI:
+    settings.check_configuration(os.environ)
+    if settings.environment(os.environ) == "production":
+        accounts.create_first_admin(os.environ)
     app = FastAPI(title="IPHS 400 MP2 CMS",
                   dependencies=[Depends(web.verify_csrf)])
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key(),

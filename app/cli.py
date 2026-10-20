@@ -7,8 +7,10 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 
-from app import envfile, publish, settings
+from app import accounts, envfile, publish, settings
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,6 +27,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "serve":
         import uvicorn
+
+        try:
+            settings.check_configuration(os.environ)
+            if (settings.environment(os.environ) == "production"
+                    and accounts.create_first_admin(os.environ)):
+                print(f"Created the first Admin, {os.environ['CMS_ADMIN_EMAIL']}."
+                      " Log in with CMS_ADMIN_PASSWORD to choose a Display name"
+                      " and a new password.")
+        except settings.BadConfiguration as bad:
+            print(f"Refusing to start:\n{bad}", file=sys.stderr)
+            return 1
 
         uvicorn.run("app.main:app", port=args.port, reload=args.reload)
         return 0

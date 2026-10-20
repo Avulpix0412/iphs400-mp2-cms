@@ -14,12 +14,13 @@ import secrets
 import sqlite3
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from app import db
+from app import db, settings
 
 _hasher = PasswordHasher()
 # Checked against when the email is unknown, so that a wrong email takes as
@@ -28,6 +29,7 @@ _DUMMY_HASH = _hasher.hash(secrets.token_urlsafe(16))
 
 BAD_CREDENTIALS = "邮箱或密码错误。"
 DISPLAY_NAME_TAKEN = "该昵称已被使用，请换一个。"
+EMAIL_TAKEN = "该邮箱已有账号。"
 
 
 class Refused(Exception):
@@ -129,12 +131,33 @@ def create_user(conn: sqlite3.Connection, *, email: str, password: str,
         )
     except sqlite3.IntegrityError as error:
         if "users.email" in str(error):
-            raise Refused("该邮箱已有账号。") from None
+            raise Refused(EMAIL_TAKEN) from None
         if "users.display_name" in str(error):
             raise Refused(DISPLAY_NAME_TAKEN) from None
         raise
     row = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
     return _user_from_row(row)
+
+
+def create_first_admin(env: Mapping[str, str]) -> bool:
+    """Production's first Admin, from CMS_ADMIN_EMAIL and CMS_ADMIN_PASSWORD,
+    made only while no Admin exists. `cms serve` and then its server process
+    both call this, so the check and the insert are one statement. The
+    password is temporary: first-login setup asks for a Display name and a
+    new password. Returns whether the Admin was made."""
+    email = _normalise_email(env["CMS_ADMIN_EMAIL"])
+    try:
+        with db.connect() as conn:
+            cur = conn.execute(
+                "INSERT INTO users (email, password_hash, role, needs_setup)"
+                " SELECT ?, ?, 'admin', 1"
+                " WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin')",
+                (email, _hasher.hash(env["CMS_ADMIN_PASSWORD"])))
+    except sqlite3.IntegrityError:
+        raise settings.BadConfiguration(
+            f"CMS_ADMIN_EMAIL {email} already belongs to an Editor, and there "
+            "is no Admin yet; choose another email.") from None
+    return cur.rowcount == 1
 
 
 def user_with_email(conn: sqlite3.Connection, email: str) -> User | None:
