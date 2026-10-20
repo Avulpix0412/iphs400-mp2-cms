@@ -29,10 +29,17 @@ def login(request: Request, email: Annotated[str, Form()],
         return templates.TemplateResponse(
             request, "admin/login.html",
             {"title": "登录", "email": email, "error": refused.message},
-            status_code=403 if isinstance(refused, accounts.AccountDeactivated)
-            else 401)
+            status_code=_status_for(refused))
     start_session(request, session_id)
     return redirect(home_for(user))
+
+
+def _status_for(refused: accounts.Refused) -> int:
+    if isinstance(refused, accounts.LockedOut):
+        return 429
+    if isinstance(refused, accounts.AccountDeactivated):
+        return 403
+    return 401
 
 
 @router.post("/logout")
