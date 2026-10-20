@@ -6,9 +6,8 @@ Exercise order and points are in `notes/mp2plus-plan.md`: P2 is done; F6 is next
 
 ## The prototype (P2)
 
-- **Question:** F6 shows an approved comment only on the page matching its language. Does the rule "a comment
-  containing any Chinese character is Chinese, otherwise English" put each comment on the right page? It rests
-  on the claim that English writers in this community never use Chinese characters.
+- **Question:** Does the rule "a comment containing any Chinese character is Chinese, otherwise English" put
+  each comment on the right language page?
 - **What was tried:** branch `prototype-comment-language`, commit `c335771`, pushed with `-u`
   (https://github.com/Avulpix0412/iphs400-mp2-cms/tree/prototype-comment-language). One throwaway script,
   `app/prototype_comment_language.py` (run: `python3 app/prototype_comment_language.py`), checks the rule on
@@ -78,7 +77,7 @@ These are uncommitted working-tree changes, so they follow the branch switch. Th
 
 Handoffs 01–10 (`docs/handoff/`) still hold: the credential scan, the PR flow (never `--delete-branch`), how
 to stop `cms serve`, `rtk proxy` for missing `gh` output, `/browse` instead of the `mcp__claude-in-chrome__*`
-tools, no `Backend:` trailer, and stale manual deadlines (don't flag anything as overdue). `/handoff` is still
+tools, and no `Backend:` trailer. `/handoff` is still
 not in the skill list; read
 `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.3.1/skills/productivity/handoff/SKILL.md`
 by hand and save to `docs/handoff/`.
