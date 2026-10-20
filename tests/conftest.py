@@ -57,6 +57,31 @@ def deploys(tmp_path, monkeypatch) -> list[Path]:
     return pushed
 
 
+class FakeClock:
+    """A clock that stands still until the test moves it."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+@pytest.fixture(autouse=True)
+def login_clock(monkeypatch) -> FakeClock:
+    """Every test starts with no failed logins counted, on a clock it can
+    move with `login_clock.advance(seconds)`."""
+    from app import accounts
+
+    clock = FakeClock()
+    monkeypatch.setattr(accounts, "login_limiter",
+                        accounts.LoginLimiter(clock=clock))
+    return clock
+
+
 def add_user(**fields) -> None:
     """Arrange an extra account directly, in any state, with its setup done
     (quicker than making it on the Users page, which T09's tests do)."""

@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 import secrets
 import sqlite3
+import threading
+import time
 from dataclasses import dataclass
 
 from argon2 import PasswordHasher
@@ -45,6 +47,13 @@ class AccountDeactivated(Refused):
 
     def __init__(self) -> None:
         super().__init__("账号已停用，无法登录。如有疑问，请联系管理员。")
+
+
+class LockedOut(Refused):
+    """Too many failed logins for this email; refused whatever the password."""
+
+    def __init__(self) -> None:
+        super().__init__("登录失败次数过多，请 15 分钟后再试。")
 
 
 # A role is a bundle of capabilities. Code asks `user.can(...)`, never which
@@ -134,15 +143,62 @@ def user_with_email(conn: sqlite3.Connection, email: str) -> User | None:
     return _user_from_row(row) if row else None
 
 
+class LoginLimiter:
+    """Counts failed logins per email over the last WINDOW seconds, read from
+    `clock` (seconds, e.g. time.monotonic) so tests can stand it still.
+
+    Kept in memory: a restart forgets the count, which is fine for one
+    process. Logins run on a threadpool, so each attempt is counted as a
+    failure, under a lock, before its password is checked: guesses sent all
+    at once can't each see a count below the limit. A success clears it."""
+
+    MAX_FAILURES = 5
+    WINDOW = 15 * 60
+
+    def __init__(self, clock) -> None:
+        self._clock = clock
+        self._failures: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def _recent(self, email: str) -> list[float]:
+        cutoff = self._clock() - self.WINDOW
+        recent = [t for t in self._failures.get(email, []) if t > cutoff]
+        if recent:
+            self._failures[email] = recent
+        else:
+            self._failures.pop(email, None)
+        return recent
+
+    def begin_attempt(self, email: str) -> bool:
+        """Count an attempt for `email`, or return False if it is locked out."""
+        with self._lock:
+            recent = self._recent(email)
+            if len(recent) >= self.MAX_FAILURES:
+                return False
+            self._failures[email] = recent + [self._clock()]
+            return True
+
+    def clear(self, email: str) -> None:
+        with self._lock:
+            self._failures.pop(email, None)
+
+
+login_limiter = LoginLimiter(clock=time.monotonic)
+
+
 def log_in(conn: sqlite3.Connection, email: str, password: str) -> tuple[str, User]:
     """Check the credentials and start a session.
     Returns the session id and the signed-in user."""
+    email = _normalise_email(email)
+    if not login_limiter.begin_attempt(email):
+        raise LockedOut
     row = conn.execute("SELECT * FROM users WHERE email = ?",
-                       (_normalise_email(email),)).fetchone()
+                       (email,)).fetchone()
     # Hash-check first, even for an unknown email, so both take the same time.
     password_ok = _matches(row["password_hash"] if row else _DUMMY_HASH, password)
     if row is None or not password_ok:
         raise Refused(BAD_CREDENTIALS)
+    login_limiter.clear(email)
     # Only told after the right password, so the state reveals nothing either.
     if row["state"] == "deactivated":
         raise AccountDeactivated
