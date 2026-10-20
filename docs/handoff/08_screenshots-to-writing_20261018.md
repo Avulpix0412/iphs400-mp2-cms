@@ -17,7 +17,6 @@ The main checkout is `/Users/yining/code/iphs400-mp2-cms` (on `main`), which hol
   should use (for example `report`), and write it into the phase file before starting.
 - **Open issues:** #12 S2 hosted console (stretch) and spec #1. The user has not said whether #12 will be
   done. Ask before assuming.
-- **Deadlines:** the manual's dates are stale. The professor extended them, so do not flag anything as overdue.
 
 ## Next session: the Stage 2 writing
 
