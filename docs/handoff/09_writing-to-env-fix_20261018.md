@@ -17,7 +17,6 @@ checkout is `/Users/yining/code/iphs400-mp2-cms` (on `main`), which holds the re
   They go into the next "Add transcripts NN–NN, …, and update usage ledger" commit, after the credential scan.
 - **Phase label:** `.claude/state/phase` says `docs`. Set it to `#31` when that work starts.
 - **#12 (S2, hosted console) will not be done.** The user will comment on the issue themselves. Don't touch it.
-- **Deadlines:** the manual's dates are stale (extended by the professor). Don't flag anything as overdue.
 
 ## Next session: #31
 

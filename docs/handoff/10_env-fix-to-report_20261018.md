@@ -22,7 +22,6 @@ checkout is `/Users/yining/code/iphs400-mp2-cms` (on `main`), which holds the re
 - **Main checkout:** still on the pre-#31 `main`. Run `git pull` there before using it, or its commands still
   need `--env-file .env`.
 - **#12 (S2, hosted console) will not be done.** The user will comment on the issue themselves. Don't touch it.
-- **Deadlines:** the manual's dates are stale (extended by the professor). Don't flag anything as overdue.
 
 ## Next session: the report (the user writes it)
 
