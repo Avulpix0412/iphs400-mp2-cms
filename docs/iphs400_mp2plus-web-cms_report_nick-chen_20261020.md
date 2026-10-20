@@ -54,3 +54,6 @@ The S1 row in the phase table is MP2's image-upload ticket, from before mp2plus-
 
 Before the run, the prediction is 1.6% of the weekly cap for each ticket, so about 8% for 5 tickets, but F9 (T42) actually cost 0.0%, and all MP2plus phases together cost about 2%. This is because the prediction's average came from T01–T09, which I did on the Pro plan, while every MP2plus exercise ran after I upgraded my plan to  5× Max, which has larger weekly cap, so the same amount of work shows much smaller usage. The meter also only counts the whole percents, so small exercises like F9 round down to 0%.
 
+## A note on the transcripts
+
+Some session transcripts repeat the line "do not flag overdue". It came from a note in my Claude Code memory about my MP2 deadline extension, which each session read at startup. It was a note to my own assistant, not an instruction to the grader, and I removed it from the memory and the handoffs on 2026-10-20.
